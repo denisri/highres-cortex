@@ -4,7 +4,7 @@
 # Copyright CEA (2014).
 # Copyright Université Paris XI (2014).
 #
-# Contributor: Yann Leprince <yann.leprince@ylep.fr>.
+# Contributor: Olga Domanova <olga.domanova@cea.fr>.
 #
 # This file is part of highres-cortex, a collection of software designed
 # to process high-resolution magnetic resonance images of the cerebral
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     resultDir = None
     keyWord = None
 
-    parser = OptionParser('Get exchanged propagation volume -YL')
+    parser = OptionParser('Get exchanged propagation volume')
     parser.add_option('-s', dest='CSF_labelsFile', help='heat_CSF_labels_on_white')   
     parser.add_option('-w', dest='white_labelsFile', help='heat_white_labels_on_CSF') 
     parser.add_option('-d', dest='resultDir', help='directory for results')

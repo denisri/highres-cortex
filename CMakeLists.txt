@@ -25,4 +25,8 @@ find_package(python REQUIRED)
 BRAINVISA_COPY_PYTHON_DIRECTORY("${CMAKE_CURRENT_SOURCE_DIR}/python"
                                  ${PROJECT_NAME})
 
+BRAINVISA_COPY_DIRECTORY("${CMAKE_CURRENT_SOURCE_DIR}/bin"
+                         bin
+                         ${PROJECT_NAME})
+
 add_subdirectory(src)

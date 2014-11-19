@@ -4,8 +4,8 @@
 # Copyright CEA (2014).
 # Copyright Université Paris XI (2014).
 #
-# Contributor: Yann Leprince <yann.leprince@ylep.fr>.
-#
+# Contributor: Olga Domanova <olga.domanova@cea.fr>.
+
 # This file is part of highres-cortex, a collection of software designed
 # to process high-resolution magnetic resonance images of the cerebral
 # cortex.

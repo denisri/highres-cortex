@@ -4,7 +4,7 @@
 # Copyright CEA (2014).
 # Copyright Université Paris XI (2014).
 #
-# Contributor: Yann Leprince <yann.leprince@ylep.fr>.
+# Contributor: Olga Domanova <olga.domanova@cea.fr>.
 #
 # This file is part of highres-cortex, a collection of software designed
 # to process high-resolution magnetic resonance images of the cerebral
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     resultDir = None
     keyWord = None
 
-    parser = OptionParser('Get the randomized relabeled volume -YL')
+    parser = OptionParser('Get the randomized relabeled volume ')
     parser.add_option('-m', dest='mergedFile', help='mergedFile')   
     parser.add_option('-d', dest='resultDir', help='directory for results')
     parser.add_option('-k', dest='keyWord', help='keyword for results')
