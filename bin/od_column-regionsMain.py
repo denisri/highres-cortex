@@ -311,9 +311,24 @@ aims.write(vol2, result_directory + 'merged_relabelled_%s.nii.gz' % (keyWord))
 vol1 = highres_cortex.od_randomize_labels.relabel(vol2)
 aims.write(vol1, result_directory + 'merged_randomized_%s.nii.gz' %(keyWord))
 
+#print np.max(np.array(vol1)) # number of different columns 111067
 
 
+## test for another diameter of cortical columns. E.g. of 3 mm, and 5 mm
+##diams = [3, 5]
+##for diam in diams:
 
+#diam = 9
+#subprocess.check_call(['ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord), '--goal-diameter', str(diam)])     
+
+##python relabel.py
+#vol1 = aims.read(result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam))
+#vol2 = highres_cortex.od_relabel.relabel(vol1)
+#aims.write(vol2, result_directory + 'merged_relabelled_%s_diam%s.nii.gz' % (keyWord, diam))
+
+##python randomize_labels.py
+#vol1 = highres_cortex.od_randomize_labels.relabel(vol2)
+#aims.write(vol1, result_directory + 'merged_randomized_%s_diam%s.nii.gz' %(keyWord, diam))
 
 
 

@@ -38,34 +38,72 @@
 
 
 # an example how to run this script
-#time od_mainCorticalColumns.py -i /volatile/od243208/brainvisa_manual/ml140175_copyFrom18_11_2014/VoronoiForDist_L_ml140175.nii.gz -d /volatile/od243208/brainvisa_manual/ml140175_columns_Cut/ -k ml140175_L_Cut
-# time od_mainCorticalColumns.py -i /volatile/od243208/brainvisa_db_morphologist/dysbrain/ad140157/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgrey_white_ad140157.nii.gz -d /volatile/od243208/brainvisa_manual/ad140157_columns/ -k ad140157_L
+# od_mainCorticalColumns.py -p ml140175 -s L -c True -i /volatile/od243208/brainvisa_db_morphologist/dysbrain/ml140175/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgw_interface_ml140175.nii.gz -d /volatile/od243208/brainvisa_manual/ml140175_test/
 
 # this is the main script to run on a classified GW volume
 # it launches scripts by Yann Leprince: dist, heat, isovolume, column-regions to compute 'cortical columns'
 
 from soma import aims, aimsalgo
+from scipy.stats import mode
 import sys, glob, os, subprocess, sys, time, timeit
 import numpy as np
 from optparse import OptionParser
+import highres_cortex.od_cutOutRois
 
 #read in the path and the directory
+brainvisa_db_morphologist = '/volatile/od243208/brainvisa_db_morphologist/dysbrain/'
+dysbrainBlindFilesDir = '/volatile/od243208/randomized_flipped_data/'
+brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+pathToTextures = '/volatile/od243208/randomized_flipped_data/manual_work/'
+patientID = None              # subject000
+realSide = 'L'
+hemisphere = 'left'
+
+realPatientID = None  # ac140155
 pathToClassifFile = None #'/volatile/od243208/brainvisa_manual/%s/GWNoInnerSulciSkel_%s_%s.nii.gz' %(realPatientID, realPatientID, realSide)
 data_directory = None
 keyWord = None
+eliminateSulci = False
+pathToSulciFile = None
+cutOut = False           # perform Voronoi on the seeds from the labelled texture and apply Yann's methods on the cut out region
 
 parser = OptionParser('Calculate iso-volumes and cortical columns')
+parser.add_option('-p', dest='realPatientID', help='Patient ID')   # if nothing is given: exit
+parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
+parser.add_option('-c', dest='cutOut', action = 'store_true', help='Work with the selected cortical regions. False is default')   
 parser.add_option('-i', dest='pathToClassifFile', help='Path to the volume with labeled cortex (100), and white matter (200)')   # if nothing is given: exit
 parser.add_option('-d', dest='data_directory', help='directory for the results') # if nothing is given exit
-parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (including the patient ID and the hemisphere)') # if nothing is given exit
+parser.add_option('-e', dest='eliminateSulci', action = 'store_true', help='Eliminate sulci skeletons from the GW segmentation volume. False is default') 
+parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (the patient ID and the hemisphere are set by default)') 
+
+
+##################### for tests ############
+#realPatientID = 'ml140175'
+#realSide = 'L'
+#cutOut = True
+#pathToClassifFile = '/volatile/od243208/brainvisa_db_morphologist/dysbrain/ml140175/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgw_interface_ml140175.nii.gz'
+#data_directory = '/volatile/od243208/brainvisa_manual/ml140175_test/' 
+#eliminateSulci = True
+#keyWord = 'ml140175_L'
+############################################
+
 
 options, args = parser.parse_args(sys.argv)
 print options
 print args
 
-if options.pathToClassifFile is None:
-    print >> sys.stderr, 'New: exit. No classification volume was given'
+if options.realPatientID is None:
+    print >> sys.stderr, 'New: exit. No patient ID was given'
     sys.exit(1)
+else:
+    realPatientID = options.realPatientID
+
+if options.realSide is not None:
+    realSide = options.realSide
+
+if options.pathToClassifFile is None:   # take the 'standard file'
+    pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID)    
+    print 'Took the standard classification file: ', pathToClassifFile
 else:
     pathToClassifFile = options.pathToClassifFile
     
@@ -76,65 +114,241 @@ else:
     data_directory = options.data_directory
     
 if options.keyWord is None:
-    print >> sys.stderr, 'New: exit. No keyword for results was given'
-    sys.exit(1)
+    keyWord = '%s_%s' %(realPatientID, realSide)
 else:
     keyWord = options.keyWord
+    
+if options.eliminateSulci is not None:
+    eliminateSulci = options.eliminateSulci    
+    
+if options.cutOut is not None:
+    cutOut = options.cutOut    
+    
     
 # in the given directory create the subdirectory for the results
 if not os.path.exists(data_directory):
     os.makedirs(data_directory)
 
+pathToClassifFileOriginal = pathToClassifFile
     
-    
-    
+############# todo: modify for the randomized data processing ############################
+
+
+
+
+
 ############# todo before this processing : ###############
 ###################### check: work in space T1 or T2 #######################################################################
 ###################### check: work with the whole cortex or with the 'cut' and 'dilated' region? ###########################
 ###################### according to this: launch the cutRoi script, adapt the keyWord and the destination data directory ###
 ############################################################################################################################
     
+
+# decided to take T1 segmentation, (: the given pathToClassifFile)
+# 1. either cut out the regions of interest or not,     -> update the keyWord
+# 2. eliminate sulci skeletons, -> update the keyWord
+# 3. transform it and resample into T2 space
+# 4. apply Yann's scripts
+    
+    
+############################# 1. either cut out the regions of interest or not, update the keyWord ##############################
+print 'cutOut is ', str(cutOut), 'type(cutOut) is ', type(cutOut)
+if cutOut is True:
+    print '###################################### cutOut ROIs ###################################################################'
+    keyWord += '_cut'
+    print 'updated keyWord is : ', keyWord
+    # take the seeds from the texture and perform the Voronoi classification of the voxels
+    volGWBorder = aims.read(pathToClassifFile, 1)
+    # find the path to the texture file
+    if realSide == 'L':
+        hemisphere = 'left'
+    else:
+        hemisphere = 'right'
+        
+    fileTex = glob.glob(pathToTextures + '%s/%s/' %(realPatientID, hemisphere) + 'subject[0-9]*_side[0-1]_texture.gii')[0]
+    print 'found the texture file : ', fileTex
+    texture = aims.read(fileTex) #    subject012_side0_texture.gii    
+    # find the hemisphere file
+    fileHemi = brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide)        
+    print 'found the hemisphere file : ', fileHemi
+    volHemi = aims.read(fileHemi)
+    
+    # perform the Voronoi classification in the given GW segmentation volume using the seeds from the texture    
+    #print volGWBorder.header()
+    print '######################### start Voronoi #################################'
+    volVoronoi = highres_cortex.od_cutOutRois.voronoiFromTexture(volGWBorder, texture, volHemi, 0, data_directory, keyWord)
+    # created the Voronoi classification that was  'cleaned' from the 'zero' value from texture
+    
+    # update the GW classif file, as now we will work with the selected regions
+    volGW = aims.read(pathToClassifFile)
+    volGWCut = highres_cortex.od_cutOutRois.excludeROI(volGW, volVoronoi, 100, 0)
+    pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
+    aims.write(volGWCut, pathToClassifFile)
+    
+    
+############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
+print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
+if eliminateSulci is True:
+    print '###################################### eliminate sulci skeletons #################################################'
+    pathToSulciFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID)
+    print 'found the sulci skeletons file : ', pathToSulciFile
+    volSulci = aims.read(pathToSulciFile)
+    arrSulci = np.array(volSulci, copy = False)
+
+    # if Voronoi was performed : eliminate sulci from there. Then correct the volume. Then project onto GW-classification
+    if cutOut is True:
+        print '############################ eliminate sulci skeletons from Voronoi classification ##########################'
+        volVor = aims.read(data_directory +  'voronoi_%s.nii.gz' %(keyWord))
+        arrVor = np.array(volVor, copy = False)        
+        arrVor[arrSulci != 0] = 0
+        keyWord += '_noSulci'
+        print 'updated keyWord is : ', keyWord
+
+        aims.write(volVor, data_directory +  'voronoi_%s.nii.gz' %(keyWord))        
+
+        print '######################## correct voxel classification after sulci eliminated from Voronoi  #####################'
+        volVor = aims.read(data_directory +  'voronoi_%s.nii.gz' %(keyWord))
+        volVorCorr = highres_cortex.od_cutOutRois.correctVoxelLabels(volVor, data_directory +  'voronoi_%s.nii.gz' %(keyWord), data_directory, keyWord, 8, 6)        
+        aims.write(volVorCorr, data_directory +  'voronoiCorr_%s.nii.gz' %(keyWord))              
+        
+        ################### just for test: study diff #####################
+        #arrVor1 = np.array(aims.read(data_directory +  'voronoi_%s.nii.gz' %(keyWord)), copy = False)
+        #arrVor2 = np.array(aims.read(data_directory +  'voronoiCorr_%s.nii.gz' %(keyWord)), copy = False)
+        #diff = np.where(arrVor1 != arrVor2)
+        #print '######################## diff between Voronoi and VoronoiCorr   #####################', len(diff[0])
+
+        #for i in range(len(diff[0])):
+            #x = diff[0][i]
+            #y = diff[1][i]
+            #z = diff[2][i]
+            ##print 'diff values at ', x, y, z, 'Voronoi = ', volVor.value(x, y, z),  'VoronoiCorr = ', volVorCorr.value(x, y, z)
+        ####################################################################
+ 
+        # update the GW classif file, as now we will work with the selected regions that were corrected
+        volGW = aims.read(pathToClassifFile)
+        volGWCut = highres_cortex.od_cutOutRois.excludeROI(volGW, volVorCorr, 100, 0)
+        pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
+        aims.write(volGWCut, pathToClassifFile)    
+        print 'volVorCorr ', data_directory +  'voronoiCorr_%s.nii.gz' %(keyWord)
+        
+        # take the Voronoi-volume and dilate it ############################
+        # therefor need to take the original GW volume and subtract sulci from there.   
+        volGW = aims.read(pathToClassifFileOriginal)
+        arrGW = np.array(volGW, copy = False)
+        arrGW[arrSulci != 0] = 0
+        # need to change a keyWord to save this file. delete '_cut' from there
+        k1 = keyWord.replace('_cut','')
+        pathToClassifFileOriginal = data_directory + 'GWsegm_%s.nii.gz' %(k1)
+        aims.write(volGW, pathToClassifFileOriginal)          
+        
+      ##  numberOfIt = 1,2,3          # not enough
+        #numberOfIt = 4          # looks good!
+        #volVorCorrDil = highres_cortex.od_cutOutRois.dilateRoiConnectivity26(volVorCorr, volGW, [11, 21], 0, 100, numberOfIt)
+        #aims.write(volVorCorrDil, data_directory +  'voronoiCorrDil%s_%s.nii.gz' %(numberOfIt, keyWord))      
+        
+        ######################### just for test:  study the 1st step of dilation ###################################
+        #volLabel11Conn6Step1 = highres_cortex.od_cutOutRois.labelDirect6Neighbors(volVorCorr, volGW, 11, 0, 100, 12)
+        #aims.write(volLabel11Conn6Step1, data_directory +  'voronoiCorrDil6_label11_step1_%s.nii.gz' %(keyWord))      
+
+        #volLabel11Conn26Step1 = highres_cortex.od_cutOutRois.labelDirect26Neighbors(volVorCorr, volGW, 11, 0, 100, 12)
+        #aims.write(volLabel11Conn26Step1, data_directory +  'voronoiCorrDil26_label11_step1_%s.nii.gz' %(keyWord))      
+
+        ## study the 2nd step
+        #volLabel11Conn6Step2 = highres_cortex.od_cutOutRois.labelDirect6Neighbors(volLabel11Conn6Step1, volGW, 12, 0, 100, 12)
+        #aims.write(volLabel11Conn6Step2, data_directory +  'voronoiCorrDil6_label11_step2_%s.nii.gz' %(keyWord))      
+
+        #volLabel11Conn26Step2 = highres_cortex.od_cutOutRois.labelDirect26Neighbors(volLabel11Conn26Step1, volGW, 12, 0, 100, 12)
+        #aims.write(volLabel11Conn26Step2, data_directory +  'voronoiCorrDil26_label11_step2_%s.nii.gz' %(keyWord))      
+        ##########################################################################################################
+        
+        # looks like 6-connectivity is inappropriate: too slow, and such a precision is not needed
+        # and 3 iterations seem to be sufficiet, too        
+        #iters = range(1,6)
+        #for numberOfIt in iters:                    
+            #volVorCorrDil26 = highres_cortex.od_cutOutRois.dilateRoiConnectivity26(volVorCorr, volGW, [11, 21], 0, 100, numberOfIt)
+            #aims.write(volVorCorrDil26, data_directory +  'voronoiCorrDil26_it%s_%s.nii.gz' %(numberOfIt, keyWord))      
+            
+            ##volVorCorrDil6 = highres_cortex.od_cutOutRois.dilateRoiConnectivity6(volVorCorr, volGW, [11, 21], 0, 100, numberOfIt)
+            ##aims.write(volVorCorrDil6, data_directory +  'voronoiCorrDil6_it%s_%s.nii.gz' %(numberOfIt, keyWord))  
+            
+        ###################### just for test ################################
+        #arrVorCorr = np.array(volVorCorr, copy = False)
+        #fileTex = glob.glob(pathToTextures + '%s/%s/' %(realPatientID, hemisphere) + 'subject[0-9]*_side[0-1]_texture.gii')[0]
+        #print fileTex
+        #texture = aims.read(fileTex) #    subject012_side0_texture.gii 
+        #arrTex = np.array(texture, copy = False)
+        #print '##################### just for test ### ', 'arrTex', np.unique(arrTex), 'arrVorCorr', np.unique(arrVorCorr)
+
+        
+        numberOfIt = 3
+        labelsUniq = np.unique(arrVorCorr)      # a list of unique labels to process, except background
+        labelsUniq = labelsUniq[labelsUniq != 0]
+        volVorCorrDil26 = highres_cortex.od_cutOutRois.dilateRoiConnectivity26(volVorCorr, volGW, labelsUniq, 0, 100, numberOfIt)
+        aims.write(volVorCorrDil26, data_directory +  'voronoiCorrDil26_it%s_%s.nii.gz' %(numberOfIt, keyWord))      
+        
+        # now we can cut the GW volume to the "extended_cut", as now we will work with the selected regions that were corrected and extended
+        volGW = aims.read(pathToClassifFileOriginal)
+        volGWCut = highres_cortex.od_cutOutRois.excludeROI(volGW, volVorCorrDil26, 100, 0)
+        pathToClassifFile = data_directory + 'GWsegm_%s_extendedCut.nii.gz' %(keyWord)
+        aims.write(volGWCut, pathToClassifFile)     
+
+        
+    else: # if no cutting out was requested: directly subtract sulci from GW-classification
+        print '############################ eliminate sulci skeletons from full GW classification ##########################'    
+        volGW = aims.read(pathToClassifFile)
+        arrGW = np.array(volGW, copy = False)
+        arrGW[arrSulci != 0] = 0
+        keyWord += '_noSulci'
+        print 'updated keyWord is : ', keyWord
+        pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
+        aims.write(volGW, pathToClassifFile)  
     
 
+
+
+############# todo T2 transformation ######################################################################################
+
+
+
 # launch the distance map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
-t0dist = timeit.default_timer()
-subprocess.check_call(['time', 'od_distmapsMain.py', 
-'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
-t1dist = timeit.default_timer()
+#t0dist = timeit.default_timer()
+#subprocess.check_call(['time', 'od_distmapsMain.py', 
+#'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+#t1dist = timeit.default_timer()
 
-# launch the heat map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
-t0heat = timeit.default_timer()
-subprocess.check_call(['time', 'od_heatMain.py', 
-'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
-t1heat = timeit.default_timer()
+## launch the heat map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
+#t0heat = timeit.default_timer()
+#subprocess.check_call(['time', 'od_heatMain.py', 
+#'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+#t1heat = timeit.default_timer()
 
-# launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
-t0iso = timeit.default_timer()
-subprocess.check_call(['time', 'od_isovolumeMain.py', 
-'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
-t1iso = timeit.default_timer()
+## launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
+#t0iso = timeit.default_timer()
+#subprocess.check_call(['time', 'od_isovolumeMain.py', 
+#'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+#t1iso = timeit.default_timer()
 
-# launch the calculation of the 'cortical columns' # classif file must be here with 100, 200, 0 , 50 and 150
-t0col = timeit.default_timer()
-pathToClassifWithBorders = data_directory + 'dist/classif_with_outer_boundaries_%s.nii.gz' %(keyWord)
-subprocess.check_call(['time', 'od_column-regionsMain.py', 
-'-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord])
-t1col = timeit.default_timer()
+## launch the calculation of the 'cortical columns' # classif file must be here with 100, 200, 0 , 50 and 150
+#t0col = timeit.default_timer()
+#pathToClassifWithBorders = data_directory + 'dist/classif_with_outer_boundaries_%s.nii.gz' %(keyWord)
+#subprocess.check_call(['time', 'od_column-regionsMain.py', 
+#'-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord])
+#t1col = timeit.default_timer()
 
-tDist = t1dist - t0dist
-tHeat = t1heat - t0heat
-tIso = t1iso - t0iso
-tCol = t1col - t0col
-header = ['sizeX', 'sizeY', 'sizeZ', 'voxelX', 'voxelY', 'voxelZ', 'tDist', 'tHeat', 'tIso', 'tCol', 'tTotal']
-volClassif = aims.read(pathToClassifFile)
-headerClassif = volClassif.header()
-content = [str(headerClassif['sizeX']), str(headerClassif['sizeY']), str(headerClassif['sizeZ']), str(headerClassif['voxel_size'][0]), str(headerClassif['voxel_size'][1]), str(headerClassif['voxel_size'][2]), str(np.round(tDist)), str(np.round(tHeat)), str(np.round(tIso)), str(np.round(tCol)), str(np.round(tDist + tHeat + tIso + tCol))]
-headerLine = ('\t').join(header)
-contentLine = ('\t').join(content)
-f = open(data_directory + "statFile_%s.txt" %(keyWord), "w")
-f.write(headerLine + '\n')
-f.write(contentLine + '\n')
-f.close()
+#tDist = t1dist - t0dist
+#tHeat = t1heat - t0heat
+#tIso = t1iso - t0iso
+#tCol = t1col - t0col
+#header = ['sizeX', 'sizeY', 'sizeZ', 'voxelX', 'voxelY', 'voxelZ', 'tDist', 'tHeat', 'tIso', 'tCol', 'tTotal', 'keyWord', 'classifFile']
+#volClassif = aims.read(pathToClassifFile)
+#headerClassif = volClassif.header()
+#content = [str(headerClassif['sizeX']), str(headerClassif['sizeY']), str(headerClassif['sizeZ']), str(headerClassif['voxel_size'][0]), str(headerClassif['voxel_size'][1]), str(headerClassif['voxel_size'][2]), str(np.round(tDist)), str(np.round(tHeat)), str(np.round(tIso)), str(np.round(tCol)), str(np.round(tDist + tHeat + tIso + tCol)), keyWord, pathToClassifFile]
+#headerLine = ('\t').join(header)
+#contentLine = ('\t').join(content)
+#f = open(data_directory + "statFile_%s.txt" %(keyWord), "w")
+#f.write(headerLine + '\n')
+#f.write(contentLine + '\n')
+#f.close()
     
     
     
