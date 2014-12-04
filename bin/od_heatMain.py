@@ -86,7 +86,7 @@ else:
 if not os.path.exists(result_directory):
     os.makedirs(result_directory)
 
-print '##################################################### starting od_heatMain.py ##############################################################################'
+print '############################################# starting od_heatMain.py #####################################################'
 
 #subprocess.check_call(['AimsThreshold', '-b', '-m', 'di', '-t', '100', '-i', pathToClassifFile, '-o', result_directory + 'all_but_cortex_%s.nii' %(keyWord)])
 #AimsThreshold -b -m di -t 100 \

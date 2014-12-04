@@ -263,17 +263,52 @@ def dilateRoiConnectivity6(vol, volDomain, labelsToInclude, labelWhereToExtend, 
             print 'iteration #  ', (k + 1)
             vol = labelDirect6Neighbors(vol, volDomain, newLabel, labelWhereToExtend, domain, newLabel)    
     return(vol)
+              
         
-        
-        
-        
-        
-        
-        
+def transformResampleVolFromVol(vol, vol2, vol1 = None):
+    """ this function takes an original volume, takes space coordinates of the second volume, transforms and resamples the original volume
+    into the space of the third volume.
+    If the second volume is not given, the original volume is directly transformed into the 2nd volume's space
+    """            
+    if vol1 is None:
+        header1 = vol.header()
+    else:
+        header1 = vol1.header()
+
+    header2 = vol2.header()
+    transform1 = header1['transformations'][0]
+    affineTransform1 = aims.AffineTransformation3d(transform1)
+
+    transform2 = header2['transformations'][0]
+    dims2 = header2['volume_dimension']    
+    voxSize2 = header2['voxel_size']
+    affineTransform2 = aims.AffineTransformation3d(transform2)
+    
+    t1_to_t2 = affineTransform2.inverse() * affineTransform1
+    resampler1 = aims.ResamplerFactory_S16().getResampler(0)
+    resampler1.setRef(vol)
+    vol_resamp = resampler1.doit(t1_to_t2, dims2[0], dims2[1], dims2[2], voxSize2)
+    return(vol_resamp)        
         
         
         
 
 ######################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

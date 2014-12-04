@@ -85,8 +85,11 @@ if not os.path.exists(result_directory):
 
 print '####################################### starting od_dystmaps.py ##############################################'
 classif = aims.read(pathToClassifFile)
-dist_from_white = highres_cortex.cortex_topo.fastmarching_negative(classif, [100], [200], 150)
+#dist_from_white = highres_cortex.cortex_topo.fastmarching_negative(classif, [100], [200], 150)
+dist_from_white = highres_cortex.cortex_topo.fastmarching_negative(classif, [100], [200], 150, False)
+
 aims.write(dist_from_white, result_directory + 'distwhite_%s.nii.gz' %(keyWord))
+print '####################################### done : dist_from_white ###############################################'
 
 # need to visualize the distance map. Therefore get all negative values and set them to some positive values
 volDistFromWhiteCopy = aims.read(result_directory + 'distwhite_%s.nii.gz' %(keyWord))
@@ -95,7 +98,9 @@ arrDistFromWhiteCopy[arrDistFromWhiteCopy < 0] = np.max(arrDistFromWhiteCopy) + 
 aims.write(volDistFromWhiteCopy, result_directory + 'distwhiteVisu_%s.nii.gz' %(keyWord))
 
 # now calculate distance to CSF
-dist_from_CSF = highres_cortex.cortex_topo.fastmarching_negative(classif, [100], [0], 50)
+#dist_from_CSF = highres_cortex.cortex_topo.fastmarching_negative(classif, [100], [0], 50)
+dist_from_CSF = highres_cortex.cortex_topo.fastmarching_negative(classif, [100], [0], 50, False)
+print '####################################### done : dist_from_CSF #################################################'
 aims.write(dist_from_CSF, result_directory + 'distCSF_%s.nii.gz' %(keyWord))
 
 volDistFromCSFCopy = aims.read(result_directory + 'distCSF_%s.nii.gz' %(keyWord))

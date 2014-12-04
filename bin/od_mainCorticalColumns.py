@@ -54,6 +54,7 @@ import highres_cortex.od_cutOutRois
 brainvisa_db_morphologist = '/volatile/od243208/brainvisa_db_morphologist/dysbrain/'
 dysbrainBlindFilesDir = '/volatile/od243208/randomized_flipped_data/'
 brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
 pathToTextures = '/volatile/od243208/randomized_flipped_data/manual_work/'
 patientID = None              # subject000
 realSide = 'L'
@@ -61,17 +62,21 @@ hemisphere = 'left'
 
 realPatientID = None  # ac140155
 pathToClassifFile = None #'/volatile/od243208/brainvisa_manual/%s/GWNoInnerSulciSkel_%s_%s.nii.gz' %(realPatientID, realPatientID, realSide)
+pathToT2File = None
 data_directory = None
 keyWord = None
 eliminateSulci = False
 pathToSulciFile = None
 cutOut = False           # perform Voronoi on the seeds from the labelled texture and apply Yann's methods on the cut out region
+toT2 = False           # transform volumes to T2 space or not. Recently decided to perform this transformation after Voronoi and subtracting sulci skeletons
 
 parser = OptionParser('Calculate iso-volumes and cortical columns')
 parser.add_option('-p', dest='realPatientID', help='Patient ID')   # if nothing is given: exit
 parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
-parser.add_option('-c', dest='cutOut', action = 'store_true', help='Work with the selected cortical regions. False is default')   
+parser.add_option('-c', dest='cutOut', action = 'store_true', help='Work with the selected cortical regions. False is default')  
+parser.add_option('-t', dest='toT2', action = 'store_true', help='Transform all the volumes into T2 space. False is default')    
 parser.add_option('-i', dest='pathToClassifFile', help='Path to the volume with labeled cortex (100), and white matter (200)')   # if nothing is given: exit
+parser.add_option('-j', dest='pathToT2File', help='Path to the original T2 volume')   # if nothing is given: exit
 parser.add_option('-d', dest='data_directory', help='directory for the results') # if nothing is given exit
 parser.add_option('-e', dest='eliminateSulci', action = 'store_true', help='Eliminate sulci skeletons from the GW segmentation volume. False is default') 
 parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (the patient ID and the hemisphere are set by default)') 
@@ -106,7 +111,15 @@ if options.pathToClassifFile is None:   # take the 'standard file'
     print 'Took the standard classification file: ', pathToClassifFile
 else:
     pathToClassifFile = options.pathToClassifFile
-    
+ 
+if options.pathToT2File is None:   # take the 'standard file'
+    finder2 = aims.Finder()
+    pathToT2File = glob.glob(brainvisa_raw_niftis + realPatientID + '/*t2*.nii.gz')[0]   # ok only if there is one t2-file, or the first one of the t2-files is correct
+    finder2.check(pathToT2File)
+    print 'Took the standard T2 file: ', pathToT2File
+else:
+    pathToT2File = options.pathToT2File
+
 if options.data_directory is None:
     print >> sys.stderr, 'New: exit. No directory for results was given'
     sys.exit(1)
@@ -123,6 +136,9 @@ if options.eliminateSulci is not None:
     
 if options.cutOut is not None:
     cutOut = options.cutOut    
+    
+if options.toT2 is not None:
+    toT2 = options.toT2    
     
     
 # in the given directory create the subdirectory for the results
@@ -281,15 +297,17 @@ if eliminateSulci is True:
 
         
         numberOfIt = 3
+        arrVorCorr = np.array(volVorCorr, copy = False)
         labelsUniq = np.unique(arrVorCorr)      # a list of unique labels to process, except background
         labelsUniq = labelsUniq[labelsUniq != 0]
         volVorCorrDil26 = highres_cortex.od_cutOutRois.dilateRoiConnectivity26(volVorCorr, volGW, labelsUniq, 0, 100, numberOfIt)
         aims.write(volVorCorrDil26, data_directory +  'voronoiCorrDil26_it%s_%s.nii.gz' %(numberOfIt, keyWord))      
         
-        # now we can cut the GW volume to the "extended_cut", as now we will work with the selected regions that were corrected and extended
+        # now we can cut the GW volume to the "extended_cut", as now we will work with the selected regions that were corrected and extended. update the keyword, too
         volGW = aims.read(pathToClassifFileOriginal)
         volGWCut = highres_cortex.od_cutOutRois.excludeROI(volGW, volVorCorrDil26, 100, 0)
-        pathToClassifFile = data_directory + 'GWsegm_%s_extendedCut.nii.gz' %(keyWord)
+        keyWord += '_extended'
+        pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
         aims.write(volGWCut, pathToClassifFile)     
 
         
@@ -304,51 +322,158 @@ if eliminateSulci is True:
         aims.write(volGW, pathToClassifFile)  
     
 
+############################# 3. do T2 transformation if requested . update the keyWord. Take original coordinates from the T1 volume #######################
+print 'toT2 is ', toT2, 'type(toT2) is ', type(toT2)
+if toT2 is True:
+    volT2 = aims.read(pathToT2File)             # find the original T2 file to compute the transformation
+    volClassif = aims.read(pathToClassifFile)
+    arrClassif = np.array(volClassif, copy = False)
+    print 'cortex voxels in arrClassif: ', len(np.where(arrClassif == 100)[0])
+    volT1 = aims.read(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID))
+    print '################################################   start transformation into T2 of the file ', pathToClassifFile
+    print '################################################   using the T2   ', pathToT2File   
+    print '################################################   using the T1   ', brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID)   
+    volClassifT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volClassif, volT2, volT1) 
+    pathCopy = pathToClassifFile
+    keyWord += '_T2'
+    pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
+    print '################################################   the updated classif file in T2 space is  ', pathToClassifFile
+    aims.write(volClassifT2, pathToClassifFile)
+    # just for test: 
+    arrClassifT2 = np.array(aims.read(pathToClassifFile), copy = False)
+    print 'cortex voxels in arrClassifT2: ', len(np.where(arrClassifT2 == 100)[0])  
+    
+    ################# just for test: needed to find problems with transformation done/or not donr in T1 and GW classification #########    
+    #volClassif = aims.read(pathCopy)
+    #volClassifT2_2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volClassif, volT2) 
+    #aims.write(volClassifT2_2, data_directory + 'GWsegm_%s_notFromT1.nii.gz' %(keyWord))
+    ## just for test: 
+    #arrClassifT2_2 = np.array(aims.read(data_directory + 'GWsegm_%s_notFromT1.nii.gz' %(keyWord)), copy = False)
+    #print 'cortex voxels in arrClassifT2_2: ', len(np.where(arrClassifT2_2 == 100)[0])  
+
+    
+    ########################### just for test. T2 transform NOT from T1 volume. Or the 'manual' one ####################
+    #volClassif = aims.read(pathCopy)
+    #print '########################### just for test ################ : manually transform into T2 '
+    #print 'pathToClassifFile ', pathCopy
+    #print 'T1 file ', brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID)
+    #finder = aims.Finder()
+    #finder.check(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID))
+    #transformT1 = finder.header()['transformations'][0]
+    #affineTransformT1 = aims.AffineTransformation3d(transformT1)
+    ## get T2 transformation without reading a file
+    #finder2 = aims.Finder()
+    #fileT2 = glob.glob(pathToT2File)[0]   # ok only if there is one t2-file, or the first one of the t2-files is correct
+    #print 'T2 file ', pathToT2File
+    #finder2.check(fileT2)
+    #transformT2 = finder2.header()['transformations'][0]
+    #dimsT2 = finder2.header()['volume_dimension']
+    #affineTransformT2 = aims.AffineTransformation3d(transformT2)
+    #t1_to_t2 = affineTransformT2.inverse() * affineTransformT1
+    #resamplerT1 = aims.ResamplerFactory_S16().getResampler(0)
+    #resamplerT1.setRef(volClassif)
+    #volumeT1_resamp = resamplerT1.doit(t1_to_t2, dimsT2[0], dimsT2[1], dimsT2[2], finder2.header()['voxel_size'])
+    #aims.write(volumeT1_resamp, data_directory + 'GWsegm_%s_manuallyFromT1.nii.gz' %(keyWord)) 
+    
+    ####################### just for test: how to improve skeletons in T2 ##############################################
+    if eliminateSulci is True:
+        print '1'
+        pathToSulciFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID)
+        volSulci = aims.read(pathToSulciFile)
+        volSulciT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volSulci, volT2, volT1) 
+        aims.write(volSulciT2, data_directory + 'sulciSkel_%s_T2.nii.gz' %(keyWord)) 
+        print '2'
+
+        # read in sulci skeletons volume. dilate it
+        volSulciDil = aims.read(pathToSulciFile, 1)
+        volSulciDil = aimsalgo.AimsMorphoDilation(volSulciDil, 1)
+        print '3'
+        aims.write(volSulciDil, data_directory + 'sulciSkel_%s_dilated.nii.gz' %(keyWord)) 
+        # transform into T2 space. Better? Less holes?
+        volSulciDilT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volSulciDil, volT2, volT1) 
+        print '4'
+        aims.write(volSulciDilT2, data_directory + 'sulciSkel_%s_dilatedT2.nii.gz' %(keyWord)) 
+        # erode this volume. come to original one
+        volSulciDilT2 = aims.read(data_directory + 'sulciSkel_%s_dilatedT2.nii.gz' %(keyWord), 1)
+        volSulciDilT2Eroded = aimsalgo.AimsMorphoErosion(volSulciDilT2, 1)
+        print '5'
+        aims.write(volSulciDilT2Eroded, data_directory + 'sulciSkel_%s_dilatedT2eroded.nii.gz' %(keyWord))      
+
+        ################## try another approach: tansform the vol1 into T2. and create skeletons there ##########################
+        fileCortex = brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/%scortex_%s.nii.gz' %(realPatientID, realSide, realPatientID)        
+        volCortex = aims.read(fileCortex)
+        volCortexT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volCortex, volT2, volT1)
+        aims.write(volCortexT2, data_directory + 'volCortexT2_%s.nii.gz' %(keyWord)) 
+
+        # read in T1 - with corrected grey level.
+        volT1nobias = aims.read(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/nobias_%s.nii.gz' %(realPatientID))
+        volT1nobiasT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volT1nobias, volT2, volT1)
+        aims.write(volT1nobiasT2, data_directory + 'volT1nobiasT2_%s.nii.gz' %(keyWord)) 
+        
+        # read in the initial grey-white classification and transform it into T2
+        volT1_greyWhite = aims.read(pathToClassifFileOriginal)
+        volT1_greyWhiteT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volT1_greyWhite, volT2, volT1)
+        aims.write(volT1_greyWhiteT2, data_directory + 'volT1_GW_T2_%s.nii.gz' %(keyWord)) 
+
+        # mask the volT1_nobias_inT2 by the grey_white region
+        volT1nobiasT2 = aims.read(data_directory + 'volT1nobiasT2_%s.nii.gz' %(keyWord))
+        #volCortexT2 = aims.read(data_directory + 'volCortexT2_%s.nii.gz' %(keyWord))
+        #arrCortexT2 = np.array(volCortexT2, copy = False)
+        volT1_greyWhiteT2 = aims.read(data_directory + 'volT1_GW_T2_%s.nii.gz' %(keyWord)) 
+        arrT1nobiasT2 = np.array(volT1nobiasT2, copy = False)
+        arr_greyWhiteT2 = np.array(volT1_greyWhiteT2, copy = False)
+        arrT1nobiasT2[arr_greyWhiteT2 == 0] = 0
+        aims.write(volT1nobiasT2, data_directory + 'volT1nobiasT2_maskHemi_%s.nii.gz' %(keyWord))         
+        #volT1inT2 = highres_cortex.od_cutOutRois.transformResampleVolFromVol(volT1, volT2)
+        #aims.write(volT1inT2, data_directory + 'volT1inT2_%s.nii.gz' %(keyWord)) 
+    
+       # subprocess.check_call(["VipSkeleton", "-i", data_directory + 'volCortexT2_%s.nii.gz' %(keyWord), "-so", data_directory + 'skeleton_%s.nii.gz' %(keyWord), "-vo", data_directory + 'roots_%s.nii.gz' %(keyWord), "-g", data_directory + 'volT1nobiasT2_maskHemi_%s.nii.gz' %(keyWord), "-w", "t"])     
+        
+#subprocess.check_call(["VipSkeleton", "-i", self.hemi_cortex, "-so", self.skeleton, "-vo", self.roots, "-g", data_directory + 'volT1inT2_%s.nii.gz' %(keyWord), "-w", "t"])     
+
+print 'after all: keyWord', keyWord, ' and pathToClassifFile ', pathToClassifFile
 
 
-############# todo T2 transformation ######################################################################################
 
+## launch the distance map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
+t0dist = timeit.default_timer()
+subprocess.check_call(['time', 'od_distmapsMain.py', 
+'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+t1dist = timeit.default_timer()
 
-
-# launch the distance map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
-#t0dist = timeit.default_timer()
-#subprocess.check_call(['time', 'od_distmapsMain.py', 
-#'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
-#t1dist = timeit.default_timer()
-
-## launch the heat map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
-#t0heat = timeit.default_timer()
-#subprocess.check_call(['time', 'od_heatMain.py', 
-#'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
-#t1heat = timeit.default_timer()
+### launch the heat map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
+t0heat = timeit.default_timer()
+subprocess.check_call(['time', 'od_heatMain.py', 
+'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+t1heat = timeit.default_timer()
 
 ## launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
-#t0iso = timeit.default_timer()
-#subprocess.check_call(['time', 'od_isovolumeMain.py', 
-#'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
-#t1iso = timeit.default_timer()
+t0iso = timeit.default_timer()
+subprocess.check_call(['time', 'od_isovolumeMain.py', 
+'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+t1iso = timeit.default_timer()
 
 ## launch the calculation of the 'cortical columns' # classif file must be here with 100, 200, 0 , 50 and 150
-#t0col = timeit.default_timer()
-#pathToClassifWithBorders = data_directory + 'dist/classif_with_outer_boundaries_%s.nii.gz' %(keyWord)
-#subprocess.check_call(['time', 'od_column-regionsMain.py', 
-#'-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord])
-#t1col = timeit.default_timer()
+t0col = timeit.default_timer()
+pathToClassifWithBorders = data_directory + 'dist/classif_with_outer_boundaries_%s.nii.gz' %(keyWord)
+subprocess.check_call(['time', 'od_column-regionsMain.py', 
+'-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord])
+t1col = timeit.default_timer()
 
-#tDist = t1dist - t0dist
-#tHeat = t1heat - t0heat
-#tIso = t1iso - t0iso
-#tCol = t1col - t0col
-#header = ['sizeX', 'sizeY', 'sizeZ', 'voxelX', 'voxelY', 'voxelZ', 'tDist', 'tHeat', 'tIso', 'tCol', 'tTotal', 'keyWord', 'classifFile']
-#volClassif = aims.read(pathToClassifFile)
-#headerClassif = volClassif.header()
-#content = [str(headerClassif['sizeX']), str(headerClassif['sizeY']), str(headerClassif['sizeZ']), str(headerClassif['voxel_size'][0]), str(headerClassif['voxel_size'][1]), str(headerClassif['voxel_size'][2]), str(np.round(tDist)), str(np.round(tHeat)), str(np.round(tIso)), str(np.round(tCol)), str(np.round(tDist + tHeat + tIso + tCol)), keyWord, pathToClassifFile]
-#headerLine = ('\t').join(header)
-#contentLine = ('\t').join(content)
-#f = open(data_directory + "statFile_%s.txt" %(keyWord), "w")
-#f.write(headerLine + '\n')
-#f.write(contentLine + '\n')
-#f.close()
+tDist = t1dist - t0dist
+tHeat = t1heat - t0heat
+tIso = t1iso - t0iso
+tCol = t1col - t0col
+header = ['sizeX', 'sizeY', 'sizeZ', 'voxelX', 'voxelY', 'voxelZ', 'tDist', 'tHeat', 'tIso', 'tCol', 'tTotal', 'keyWord', 'classifFile']
+volClassif = aims.read(pathToClassifFile)
+headerClassif = volClassif.header()
+content = [str(headerClassif['sizeX']), str(headerClassif['sizeY']), str(headerClassif['sizeZ']), str(headerClassif['voxel_size'][0]), str(headerClassif['voxel_size'][1]), str(headerClassif['voxel_size'][2]), str(np.round(tDist)), str(np.round(tHeat)), str(np.round(tIso)), str(np.round(tCol)), str(np.round(tDist + tHeat + tIso + tCol)), keyWord, pathToClassifFile]
+headerLine = ('\t').join(header)
+contentLine = ('\t').join(content)
+f = open(data_directory + "statFile_%s.txt" %(keyWord), "w")
+f.write(headerLine + '\n')
+f.write(contentLine + '\n')
+f.close()
     
     
     
