@@ -69,6 +69,7 @@ eliminateSulci = False
 pathToSulciFile = None
 cutOut = False           # perform Voronoi on the seeds from the labelled texture and apply Yann's methods on the cut out region
 toT2 = False           # transform volumes to T2 space or not. Recently decided to perform this transformation after Voronoi and subtracting sulci skeletons
+workOnLaptop = False
 
 parser = OptionParser('Calculate iso-volumes and cortical columns')
 parser.add_option('-p', dest='realPatientID', help='Patient ID')   # if nothing is given: exit
@@ -80,13 +81,14 @@ parser.add_option('-j', dest='pathToT2File', help='Path to the original T2 volum
 parser.add_option('-d', dest='data_directory', help='directory for the results') # if nothing is given exit
 parser.add_option('-e', dest='eliminateSulci', action = 'store_true', help='Eliminate sulci skeletons from the GW segmentation volume. False is default') 
 parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (the patient ID and the hemisphere are set by default)') 
+parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
 
 
 ##################### for tests ############
 #realPatientID = 'ml140175'
 #realSide = 'L'
 #cutOut = True
-#pathToClassifFile = '/volatile/od243208/brainvisa_db_morphologist/dysbrain/ml140175/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgw_interface_ml140175.nii.gz'
+#pathToClassifFile = brainvisa_db_neurospin +  'ml140175/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgw_interface_ml140175.nii.gz'
 #data_directory = '/volatile/od243208/brainvisa_manual/ml140175_test/' 
 #eliminateSulci = True
 #keyWord = 'ml140175_L'
@@ -139,6 +141,13 @@ if options.cutOut is not None:
     
 if options.toT2 is not None:
     toT2 = options.toT2    
+    
+if options.workOnLaptop is not None:
+    workOnLaptop = options.workOnLaptop  
+    
+    # if true, then processes are run on the laptop. Change locations of neurospin DBs
+    brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+    brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
     
     
 # in the given directory create the subdirectory for the results
@@ -470,7 +479,15 @@ headerClassif = volClassif.header()
 content = [str(headerClassif['sizeX']), str(headerClassif['sizeY']), str(headerClassif['sizeZ']), str(headerClassif['voxel_size'][0]), str(headerClassif['voxel_size'][1]), str(headerClassif['voxel_size'][2]), str(np.round(tDist)), str(np.round(tHeat)), str(np.round(tIso)), str(np.round(tCol)), str(np.round(tDist + tHeat + tIso + tCol)), keyWord, pathToClassifFile]
 headerLine = ('\t').join(header)
 contentLine = ('\t').join(content)
-f = open(data_directory + "statFile_%s.txt" %(keyWord), "w")
+statFileName = data_directory + "statFile_%s" %(keyWord)
+
+# note if the processing was performed on laptop:
+if workOnLaptop:
+    statFileName += '_laptop.txt'
+else:
+    statFileName += '.txt'
+
+f = open(statFileName, "w")
 f.write(headerLine + '\n')
 f.write(contentLine + '\n')
 f.close()
