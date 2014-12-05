@@ -46,7 +46,6 @@ import sys, glob, os, subprocess, sys, time
 import numpy as np
 from optparse import OptionParser
 import highres_cortex.cortex_topo, highres_cortex.div_gradn, highres_cortex.od_get_exchanged_propvol, highres_cortex.od_relabel_conjunction, highres_cortex.od_relabel, highres_cortex.od_randomize_labels
-from soma.aims import od_cartoLinearComb
 
 #read in the path and the directory
 pathToClassifFile = None 

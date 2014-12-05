@@ -105,8 +105,21 @@ if options.realPatientID is None:
 else:
     realPatientID = options.realPatientID
 
+if options.data_directory is None:
+    print >> sys.stderr, 'New: exit. No directory for results was given'
+    sys.exit(1)
+else:
+    data_directory = options.data_directory
+    
 if options.realSide is not None:
     realSide = options.realSide
+
+if options.workOnLaptop is not None:
+    workOnLaptop = options.workOnLaptop  
+    
+    # if true, then processes are run on the laptop. Change locations of neurospin DBs
+    brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+    brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
 
 if options.pathToClassifFile is None:   # take the 'standard file'
     pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID)    
@@ -122,12 +135,6 @@ if options.pathToT2File is None:   # take the 'standard file'
 else:
     pathToT2File = options.pathToT2File
 
-if options.data_directory is None:
-    print >> sys.stderr, 'New: exit. No directory for results was given'
-    sys.exit(1)
-else:
-    data_directory = options.data_directory
-    
 if options.keyWord is None:
     keyWord = '%s_%s' %(realPatientID, realSide)
 else:
@@ -141,14 +148,7 @@ if options.cutOut is not None:
     
 if options.toT2 is not None:
     toT2 = options.toT2    
-    
-if options.workOnLaptop is not None:
-    workOnLaptop = options.workOnLaptop  
-    
-    # if true, then processes are run on the laptop. Change locations of neurospin DBs
-    brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
-    brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
-    
+        
     
 # in the given directory create the subdirectory for the results
 if not os.path.exists(data_directory):

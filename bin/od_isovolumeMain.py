@@ -45,7 +45,6 @@ import sys, glob, os, subprocess, sys, time
 import numpy as np
 from optparse import OptionParser
 import highres_cortex.cortex_topo, highres_cortex.div_gradn
-from soma.aims import od_cartoLinearComb
 
 #read in the path and the directory
 pathToClassifFile = None #'/volatile/od243208/brainvisa_manual/%s/GWNoInnerSulciSkel_%s_%s.nii.gz' %(realPatientID, realPatientID, realSide)
