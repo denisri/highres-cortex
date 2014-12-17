@@ -51,11 +51,9 @@ from optparse import OptionParser
 import highres_cortex.od_cutOutRois
 
 #read in the path and the directory
-brainvisa_db_morphologist = '/volatile/od243208/brainvisa_db_morphologist/dysbrain/'
-dysbrainBlindFilesDir = '/volatile/od243208/randomized_flipped_data/'
 brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
 brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
-pathToTextures = '/volatile/od243208/randomized_flipped_data/manual_work/'
+pathToTextures = '/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
 patientID = None              # subject000
 realSide = 'L'
 hemisphere = 'left'
@@ -120,7 +118,8 @@ if options.workOnLaptop is not None:
     # if true, then processes are run on the laptop. Change locations of neurospin DBs
     brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
     brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
-
+    pathToTextures = '/volatile/od243208/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
+    
 if options.pathToClassifFile is None:   # take the 'standard file'
     pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID)    
     print 'Took the standard classification file: ', pathToClassifFile
