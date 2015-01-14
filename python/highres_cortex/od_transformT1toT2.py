@@ -38,8 +38,11 @@
 #
 #
 #
-# this function will take the original T1 volume, the T2 volume, and transform T1 into T2 space,
-# respecting the bounding box
+# this function will take the original T1 volume, the T2 volume, and 
+# transform T1 into T2 space, respecting the bounding box
+# update: it also takes the processing results of Morphologist (in T1 space) 
+# and transforms them into T2 space (needed to compare and validate results
+# of Morphologist on original images in the new T2 space)
 
 import random
 from soma import aims
@@ -104,9 +107,9 @@ def transformT1toT2(volT1, volT2):
         xCoords_new.append(p1[0])
         yCoords_new.append(p1[1])
         zCoords_new.append(p1[2])
-        print 'old point coords ', xCoords[i], yCoords[i], zCoords[i]
-        print 'new point coords ', p1[0], p1[1], p1[2]
-        print '-------------------------------------------'
+        #print 'old point coords ', xCoords[i], yCoords[i], zCoords[i]
+        #print 'new point coords ', p1[0], p1[1], p1[2]
+        #print '-------------------------------------------'
 
     # check if some of the new coordinates are negative, then translate the volume to make them all positive
     shiftX = 0
@@ -170,8 +173,14 @@ def transformT1toT2(volT1, volT2):
     print 'voxSize2 : ', voxSize2[0], voxSize2[1], voxSize2[2]
     resampler1 = aims.ResamplerFactory_S16().getResampler(0)
     resampler1.setRef(volT1)
+    print '------------- RESAMPLER:  ---------  volT1.header()  ----------------------'
+    #print volT1.header()
     vol_resamp = resampler1.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
     print 'given dims to resampler : ', newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2]
+    print 'voxSize2 : ', voxSize2[:]
+    print 'type voxSize2 : ', type(voxSize2)
+    print 'type: newMaxX/voxSize2[0] ', type(newMaxX/voxSize2[0])
+
     
     # now need to apply the same translation to the T2 volume
     t2Translation = aims.AffineTransformation3d()
@@ -188,32 +197,58 @@ def transformT1toT2(volT1, volT2):
     
     ############################################################################################################
     # just for test: take sulci skeletons generated in T1. and transform them into T2. to compare   
-    realSide = 'L'
-    pathToSulciFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID)
-    print 'found the sulci skeletons file : ', pathToSulciFile
-    volSulci = aims.read(pathToSulciFile)
+    vols = []
+    names = []
     
-    resampler3 = aims.ResamplerFactory_S16().getResampler(0)
-    resampler3.setRef(volSulci)
-    vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
-    print 'resampled the initial T1 %s skeleton ' %(realSide)
-    aims.write(vol_resamp3, resultDirectory + keyWord + '_%s_SulciSkelT1_inT2.nii.gz' %(realSide))
+    for realSide in ['L', 'R']:            
+        # 1. GW classif
+        volsGWlist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
+        if len(volsGWlist) == 1:
+            volGW = aims.read(volsGWlist[0])
+            print 'Took the volGW: ', volsGWlist[0]
+            resampler3 = aims.ResamplerFactory_S16().getResampler(0)
+            resampler3.setRef(volGW)
+            vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
+            vols.append(vol_resamp3)
+            print 'resampled the initial GW %s ' %(realSide)
+            names.append('_GW_%s_T1inNewT2.nii.gz' %(realSide))
+        
+            
+        # 2. skeletons
+        sulcilist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
+        if len(sulcilist) == 1: 
+            sulci = aims.read(sulcilist[0])
+            print 'Took the sulci: ', sulcilist[0]            
+            resampler4 = aims.ResamplerFactory_S16().getResampler(0)
+            resampler4.setRef(sulci)
+            vol_resamp4 = resampler4.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
+            vols.append(vol_resamp4)    
+            print 'resampled the initial T1 %s skeleton ' %(realSide)
+            names.append('_sulciSkel_%s_T1inNewT2.nii.gz' %(realSide))
 
-    realSide = 'R'
-    pathToSulciFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID)
-    print 'found the sulci skeletons file : ', pathToSulciFile
-    volSulci = aims.read(pathToSulciFile)
+                
+                
+ 
+    ############################## problem: doing this outside of this function leads to errors!!! #########################
+    #realSide = 'R'
+    #pathToSulciFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID)
+    #print 'found the sulci skeletons file : ', pathToSulciFile
+    #volSulci = aims.read(pathToSulciFile)
     
-    resampler3 = aims.ResamplerFactory_S16().getResampler(0)
-    resampler3.setRef(volSulci)
-    vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
-    print 'resampled the initial T1 %s skeleton ' %(realSide)
-    aims.write(vol_resamp3, resultDirectory + keyWord + '_%s_SulciSkelT1_inT2.nii.gz' %(realSide))
+    #resampler3 = aims.ResamplerFactory_S16().getResampler(0)
+    #resampler3.setRef(volSulci)
+    #vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
+    #print 'resampled the initial T1 %s skeleton ' %(realSide)
+    #aims.write(vol_resamp3, resultDirectory + keyWord + '_%s_SulciSkelT1_inT2.nii.gz' %(realSide))
     ################################################################################################################
     
+    resList = [vol_resamp, vol_resamp2, t1_to_t2_original, t1_to_t2, t2Translation]
+    resList.append(vols)
+    resList.append(names)    
 
-    return([vol_resamp, vol_resamp2, t1_to_t2_original, t1_to_t2, t2Translation])         
-  
+    #return([vol_resamp, vol_resamp2, t1_to_t2_original, t1_to_t2, t2Translation])         
+    return(resList)         
+
     
 if __name__ == '__main__':
     
@@ -335,7 +370,11 @@ if __name__ == '__main__':
         pathTot2 = resultDirectory + keyWord + '_t2.trm'
         aims.write(t2Translation, pathTot2)
         
-      
-    
+        volsNew = vols[5]
+        namesNew = vols[6]
+        
+        for i in range(len(volsNew)):
+            aims.write(volsNew[i], resultDirectory + keyWord + namesNew[i])
+ 
     
     
