@@ -44,6 +44,9 @@
 # and transforms them into T2 space (needed to compare and validate results
 # of Morphologist on original images in the new T2 space)
 
+# example how to run this file:
+# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /volatile/od243208/brainvisa_manual/testT1toT2_LinearWithHemi/ -r /neurospin/lnao/dysbrain/raw_niftis/
+
 import random
 from soma import aims
 import subprocess
@@ -171,7 +174,8 @@ def transformT1toT2(volT1, volT2):
     
     # transform the original T1 volumt into T2 space
     print 'voxSize2 : ', voxSize2[0], voxSize2[1], voxSize2[2]
-    resampler1 = aims.ResamplerFactory_S16().getResampler(0)
+    # modified! Resample volT1 with LINEAR interpolation!!! (1). and not with NN (0).
+    resampler1 = aims.ResamplerFactory_S16().getResampler(1)
     resampler1.setRef(volT1)
     print '------------- RESAMPLER:  ---------  volT1.header()  ----------------------'
     #print volT1.header()
@@ -187,8 +191,9 @@ def transformT1toT2(volT1, volT2):
     #t2Translation.translation()[:] = t1_to_t2.translation()[:]    
     #t2Translation.translation()[:] = [- t1_to_t2.translation()[0], - t1_to_t2.translation()[1], - t1_to_t2.translation()[2]]   
     t2Translation.translation()[:] = [- shiftX, - shiftY, - shiftZ]   
-
-    resampler2 = aims.ResamplerFactory_S16().getResampler(0)
+    
+    # modified! Resample volT2 with LINEAR interpolation!!! (1). and not with NN (0).
+    resampler2 = aims.ResamplerFactory_S16().getResampler(1)
     resampler2.setRef(volT2)
     print 'transformation to be applied to the T2 volume: '
     print t2Translation
@@ -206,6 +211,7 @@ def transformT1toT2(volT1, volT2):
         if len(volsGWlist) == 1:
             volGW = aims.read(volsGWlist[0])
             print 'Took the volGW: ', volsGWlist[0]
+            # GW volume is resampled as the NN (0)
             resampler3 = aims.ResamplerFactory_S16().getResampler(0)
             resampler3.setRef(volGW)
             vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
@@ -218,14 +224,28 @@ def transformT1toT2(volT1, volT2):
         sulcilist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
         if len(sulcilist) == 1: 
             sulci = aims.read(sulcilist[0])
-            print 'Took the sulci: ', sulcilist[0]            
+            print 'Took the sulci: ', sulcilist[0]         
+            # Skeletons are resampled as NN, too (0)
             resampler4 = aims.ResamplerFactory_S16().getResampler(0)
             resampler4.setRef(sulci)
             vol_resamp4 = resampler4.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
             vols.append(vol_resamp4)    
             print 'resampled the initial T1 %s skeleton ' %(realSide)
             names.append('_sulciSkel_%s_T1inNewT2.nii.gz' %(realSide))
-
+            
+        # 3. textures        
+        # to transform texture: need to transform the corresponding mesh
+        fileHemi = glob.glob(brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide))
+        if len(fileHemi) == 1:
+            print 'found the hemisphere file : ', fileHemi 
+            # resample the hemisphere
+            volHemi = aims.read(fileHemi[0])
+            aims.SurfaceManip.meshTransform(volHemi, t1_to_t2)
+            print 'resampled the initial T1 %s skeleton ' %(realSide)
+            vols.append(volHemi)    
+            names.append('_hemi_%s_T1inNewT2.gii' %(realSide))
+        
+        
                 
                 
  
@@ -262,8 +282,8 @@ if __name__ == '__main__':
     resultDirectory = None
 
     parser = OptionParser('Transform T1 volume into T2 space without cutting it')
-    parser.add_option('-i', dest='volT1', help='volT1')   
-    parser.add_option('-t', dest='volT2', help='volT2') 
+    parser.add_option('-i', dest='volT1', help='volT1. Optional')   
+    parser.add_option('-t', dest='volT2', help='volT2. Optional') 
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-k', dest='keyWord', help='keyWord')
     parser.add_option('-d', dest='directory', help='directory')
