@@ -38,6 +38,8 @@
 
 
 # an example how to run this script
+#od_mainCorticalColumns.py -p ad140157 -c -d /volatile/od243208/brainvisa_manual/ad140157_cut_T1inT2_Columns/ -r
+
 # od_mainCorticalColumns.py -p ml140175 -s L -c True -i /volatile/od243208/brainvisa_db_morphologist/dysbrain/ml140175/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgw_interface_ml140175.nii.gz -d /volatile/od243208/brainvisa_manual/ml140175_test/
 
 # this is the main script to run on a classified GW volume
@@ -54,6 +56,7 @@ import highres_cortex.od_cutOutRois
 brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
 brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
 pathToTextures = '/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
+pathToTrm = '/neurospin/lnao/dysbrain/testT1T2_LinearInterp/'  
 patientID = None              # subject000
 realSide = 'L'
 hemisphere = 'left'
@@ -68,6 +71,7 @@ pathToSulciFile = None
 cutOut = False           # perform Voronoi on the seeds from the labelled texture and apply Yann's methods on the cut out region
 toT2 = False           # transform volumes to T2 space or not. Recently decided to perform this transformation after Voronoi and subtracting sulci skeletons
 workOnLaptop = False
+workOnT1inT2Space = False
 
 parser = OptionParser('Calculate iso-volumes and cortical columns')
 parser.add_option('-p', dest='realPatientID', help='Patient ID')   # if nothing is given: exit
@@ -80,6 +84,7 @@ parser.add_option('-d', dest='data_directory', help='directory for the results')
 parser.add_option('-e', dest='eliminateSulci', action = 'store_true', help='Eliminate sulci skeletons from the GW segmentation volume. False is default') 
 parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (the patient ID and the hemisphere are set by default)') 
 parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
+parser.add_option('-r', dest='workOnT1inT2Space', action = 'store_true', help='Select if working on with T1 images that were resampled into T2 space and then processed by Morphologist. False is default') 
 
 
 ##################### for tests ############
@@ -112,14 +117,22 @@ else:
 if options.realSide is not None:
     realSide = options.realSide
 
+if options.workOnT1inT2Space is not None:
+    workOnT1inT2Space = options.workOnT1inT2Space      
+    # if true, then processes are run on (T1 resampled in T2 space). Change locations of neurospin DBs
+    brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_highresLinear/dysbrain/'    
+
 if options.workOnLaptop is not None:
-    workOnLaptop = options.workOnLaptop  
-    
+    workOnLaptop = options.workOnLaptop      
     # if true, then processes are run on the laptop. Change locations of neurospin DBs
-    brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
-    brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
-    pathToTextures = '/volatile/od243208/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
-    
+    brainvisa_db_neurospin = brainvisa_db_neurospin.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
+    brainvisa_raw_niftis = brainvisa_raw_niftis.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
+    pathToTextures = pathToTextures.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
+    pathToTrm = pathToTrm.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
+    #brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+    #brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
+    #pathToTextures = '/volatile/od243208/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
+
 if options.pathToClassifFile is None:   # take the 'standard file'
     pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID)    
     print 'Took the standard classification file: ', pathToClassifFile
@@ -193,9 +206,20 @@ if cutOut is True:
     print 'found the texture file : ', fileTex
     texture = aims.read(fileTex) #    subject012_side0_texture.gii    
     # find the hemisphere file
-    fileHemi = brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide)        
+    fileHemi = pathToTrm + realPatientID + '/%s_hemi_%s_T1inNewT2.gii' %(realPatientID, realSide)
+    pathToTrm = '/neurospin/lnao/dysbrain/testT1T2_LinearInterp/'  
+
+    # brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide)        
     print 'found the hemisphere file : ', fileHemi
     volHemi = aims.read(fileHemi)
+    
+    #################### problem!!! Texture is still in the "old space". Need to transform it to the new space
+    # read in the transformation file (from T1 into T2 space)
+   # pathTot1_to_t2 = pathToTrm + realPatientID + '/%s_t1_to_t2.trm' % (realPatientID)
+  #  transfT1toT2 = aims.read(pathTot1_to_t2)
+    ###################### todo!!!!!!!!!!!!!!
+
+    
     
     # perform the Voronoi classification in the given GW segmentation volume using the seeds from the texture    
     #print volGWBorder.header()
