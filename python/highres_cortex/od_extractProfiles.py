@@ -46,8 +46,7 @@
 
 
 # example how to run this file:
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ac140159 -d /neurospin/lnao/dysbrain/optimiseParmaters_ExtendVoronoi/
-
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py -p he140338 -d /neurospin/lnao/dysbrain/optimiseParmaters_ExtendVoronoi/
 import random
 from soma import aims, aimsalgo
 import subprocess
@@ -88,9 +87,11 @@ if __name__ == '__main__':
     
     realPatientID = None
     directory = None
+    realSide = 'L'
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
+    parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
     options, args = parser.parse_args(sys.argv)
     print options
@@ -108,13 +109,18 @@ if __name__ == '__main__':
     else:
         realPatientID = options.realPatientID     
 
+    if options.realSide is not None:
+        realSide = options.realSide
+
     pathToCoord = directory + '%s/%s_T1inT2_ColumnsCutNew15It/isovolume/' %(realPatientID, realPatientID)
-    pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias/'
+    pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
+    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
     pathToMask = directory + '%s/%s_T1inT2_ColumnsCutNew15It/' %(realPatientID, realPatientID)
     
-    volCoord = aims.read(pathToCoord + 'pial-volume-fraction_%s_L_cut_noSulci_extended.nii.gz' %(realPatientID))
+    volCoord = aims.read(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
     volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
-    volMask = aims.read(pathToMask + 'voronoiCorr_%s_L_cut_noSulci.nii.gz' %(realPatientID))
+    volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
+    volMask = aims.read(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
 
     result = extractProfiles(volCoord, volValue, volMask)
     coordinates = result[0]
@@ -123,15 +129,37 @@ if __name__ == '__main__':
     # plot the data
     #plt.plot(coordinates, 'bo')
     #plt.plot(intensities, 'bo')
-    plt.plot(coordinates, intensities, '.')
+    plt.plot(coordinates, intensities, '.', c = 'b')
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_T1inT2_ColumnsCutNew15It/%s_plot_T2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realPatientID))
+    plt.savefig(directory + '%s/%s_%s_It15_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
 
     
+    # repeat for the NEW nobias images!
+    result2 = extractProfiles(volCoord, volValue2, volMask)
+    coordinates2 = result2[0]
+    intensities2 = result2[1]
+
+    # plot the data
+    #plt.plot(coordinates, 'bo')
+    #plt.plot(intensities, 'bo')
+    plt.plot(coordinates2, intensities2, '.', c = 'r')
+    plt.title('Profile in ROI')   # subplot 211 title
+    plt.xlabel('Cortical depth')
+    plt.ylabel('T2-nobias intensity')
+    plt.savefig(directory + '%s/%s_%s_It15_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
     
+    plt.clf()
+    plt.close()
     
+    plt.plot(coordinates2, intensities2, '.', c = 'r')
+    plt.title('Profile in ROI')   # subplot 211 title
+    plt.xlabel('Cortical depth')
+    plt.ylabel('T2-nobias intensity')
+    plt.savefig(directory + '%s/%s_%s_It15_newNobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+
+ 
     
     
     

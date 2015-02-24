@@ -50,7 +50,7 @@
 # the maximal difference is calculated and reported.
 
 # example how to run this file:
-# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /volatile/od243208/brainvisa_manual/testT1toT2_LinearWithHemi/ -r /neurospin/lnao/dysbrain/raw_niftis/
+# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py -p lg140146 -d /neurospin/lnao/dysbrain/optimiseParmaters_ExtendVoronoi/ -s R
 
 import random
 from soma import aims, aimsalgo
@@ -84,10 +84,12 @@ def findDiffInROI(vol1, vol2, mask):
 if __name__ == '__main__':    
     realPatientID = None
     directory = None
+    realSide = 'L'
 
     parser = OptionParser('Find differences between the volumes in a ROI')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-d', dest='directory', help='directory')
+    parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -103,19 +105,21 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
         realPatientID = options.realPatientID     
+  
+    if options.realSide is not None:
+        realSide = options.realSide
 
     pathToFullCortex = directory + '%s/%s_T1inT2_ColumnsNew/' %(realPatientID, realPatientID)
     pathToCutCortex = directory + '%s/%s_T1inT2_ColumnsCutNew' %(realPatientID, realPatientID)     # add 3It, 5It, ..
     pathToROIMask = ''
     f = open(directory + '%s/%s_extendVoronoiParams.txt' %(realPatientID, realPatientID), "w")
 
-    volFull = aims.read(pathToFullCortex + 'heat/heat_%s_L_noSulci.nii.gz' %(realPatientID)) 
-    f.write('Differences to the file ' + pathToFullCortex + 'heat/heat_%s_L_noSulci.nii.gz' %(realPatientID) + '\n')
-
-    mask = aims.read(directory + '%s/%s_T1inT2_ColumnsCutNew3It/voronoiCorr_%s_L_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID))
+    volFull = aims.read(pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide)) 
+    f.write('Differences to the file ' + pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide) + '\n')
+    mask = aims.read(directory + '%s/%s_T1inT2_ColumnsCutNew15It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID, realSide))
 
     # get a list of cut cortex volumes
-    pathToVolsCut = glob.glob(pathToCutCortex + '[0-9]*It/heat/heat_%s_L_cut_noSulci_extended.nii.gz' %(realPatientID))
+    pathToVolsCut = glob.glob(pathToCutCortex + '[0-9]*It/heat/heat_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
 
     for i in range(len(pathToVolsCut)):
         volCut = aims.read(pathToVolsCut[i])
