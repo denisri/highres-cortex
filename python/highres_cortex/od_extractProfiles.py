@@ -112,10 +112,10 @@ if __name__ == '__main__':
     if options.realSide is not None:
         realSide = options.realSide
 
-    pathToCoord = directory + '%s/%s_T1inT2_ColumnsCutNew15It/isovolume/' %(realPatientID, realPatientID)
+    pathToCoord = directory + '%s/%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID, realPatientID)
     pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
-    pathToMask = directory + '%s/%s_T1inT2_ColumnsCutNew15It/' %(realPatientID, realPatientID)
+    pathToMask = directory + '%s/%s_T1inT2_ColumnsCutNew20It/' %(realPatientID, realPatientID)
     
     volCoord = aims.read(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
     volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_%s_It15_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+    plt.savefig(directory + '%s/%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
 
     
     # repeat for the NEW nobias images!
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_%s_It15_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+    plt.savefig(directory + '%s/%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
     
     plt.clf()
     plt.close()
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_%s_It15_newNobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+    plt.savefig(directory + '%s/%s_%s_It20_newNobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
 
  
     

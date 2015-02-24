@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     volFull = aims.read(pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide)) 
     f.write('Differences to the file ' + pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide) + '\n')
-    mask = aims.read(directory + '%s/%s_T1inT2_ColumnsCutNew15It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID, realSide))
+    mask = aims.read(directory + '%s/%s_T1inT2_ColumnsCutNew20It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID, realSide))
 
     # get a list of cut cortex volumes
     pathToVolsCut = glob.glob(pathToCutCortex + '[0-9]*It/heat/heat_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
