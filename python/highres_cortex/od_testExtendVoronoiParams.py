@@ -114,10 +114,19 @@ if __name__ == '__main__':
     pathToROIMask = ''
     f = open(directory + '%s/%s_extendVoronoiParams.txt' %(realPatientID, realPatientID), "w")
 
-    volFull = aims.read(pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide)) 
+    volsFull = glob.glob(pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide))
+    masks = glob.glob(directory + '%s/%s_T1inT2_ColumnsCutNew20It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID, realSide))
+    if len(volsFull) != 1 or len(masks) != 1:
+        # abort the calculation, as too many or not a single texture file was found
+        print 'abort the calculation, as too many or not a single volsFull file was found'
+        f.write('abort the calculation, as ' + str(len(volsFull)) + ' volsFull and ' + str(len(masks)) + ' masks files were found' + '\n')
+        f.close()
+        sys.exit(0)
+        
+    volFull = aims.read(volsFull[0])  
+    mask = aims.read(masks[0])
     f.write('Differences to the file ' + pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide) + '\n')
-    mask = aims.read(directory + '%s/%s_T1inT2_ColumnsCutNew20It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID, realSide))
-
+    
     # get a list of cut cortex volumes
     pathToVolsCut = glob.glob(pathToCutCortex + '[0-9]*It/heat/heat_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
 

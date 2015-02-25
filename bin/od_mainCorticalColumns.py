@@ -200,6 +200,7 @@ if cutOut is True:
     keyWord += '_cut'
     print 'updated keyWord is : ', keyWord
     # take the seeds from the texture and perform the Voronoi classification of the voxels
+    print pathToClassifFile
     volGWBorder = aims.read(pathToClassifFile, 1)
     # find the path to the texture file
     if realSide == 'L':
@@ -207,7 +208,24 @@ if cutOut is True:
     else:
         hemisphere = 'right'
         
-    fileTex = glob.glob(pathToTextures + '%s/%s/' %(realPatientID, hemisphere) + 'subject[0-9]*_side[0-1]_texture.gii')[0]
+    filesTex = glob.glob(pathToTextures + '%s/%s/' %(realPatientID, hemisphere) + 'subject[0-9]*_side[0-1]_texture.gii')
+    if len(filesTex) != 1:
+        # abort the calculation, as too many or not a single texture file was found
+        print 'abort the calculation, as too many or not a single texture file was found'
+        statFileName = data_directory + "statFile_%s" %(keyWord)
+
+        # note if the processing was performed on laptop:
+        if workOnLaptop:
+            statFileName += '_laptop.txt'
+        else:
+            statFileName += '.txt'
+
+        f = open(statFileName, "w")
+        f.write('abort the calculation, as ' + str(len(filesTex)) + ' texture files were found' + '\n')
+        f.close()
+        sys.exit(0)
+    
+    fileTex = filesTex[0]
     print 'found the texture file : ', fileTex
     texture = aims.read(fileTex) #    subject012_side0_texture.gii    
     # find the hemisphere file

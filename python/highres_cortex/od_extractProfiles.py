@@ -117,11 +117,25 @@ if __name__ == '__main__':
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
     pathToMask = directory + '%s/%s_T1inT2_ColumnsCutNew20It/' %(realPatientID, realPatientID)
     
-    volCoord = aims.read(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
+    volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
     volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
     volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
-    volMask = aims.read(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
+    volsMask = glob.glob(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
 
+    # test if all data is available
+    f = open(directory + '%s/%s_statFileProfiles.txt' %(realPatientID, realPatientID), "w")
+    if len(volsCoord) != 1 or len(volsMask) != 1:
+        # abort the calculation, as too many or not a single texture file was found
+        print 'abort the calculation, as too many or not a single volsCoord and volsMask file was found'
+        f.write('abort the calculation, as ' + str(len(volsCoord)) + ' volsCoord and ' + str(len(volsMask)) + ' volsMask files were found' + '\n')
+        f.close()
+        sys.exit(0)
+    
+    f.close()        
+    volCoord = aims.read(volsCoord[0])  
+    volMask = aims.read(volsMask[0])
+
+    
     result = extractProfiles(volCoord, volValue, volMask)
     coordinates = result[0]
     intensities = result[1]
