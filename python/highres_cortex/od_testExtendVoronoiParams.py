@@ -112,7 +112,7 @@ if __name__ == '__main__':
     pathToFullCortex = directory + '%s/%s_T1inT2_ColumnsNew/' %(realPatientID, realPatientID)
     pathToCutCortex = directory + '%s/%s_T1inT2_ColumnsCutNew' %(realPatientID, realPatientID)     # add 3It, 5It, ..
     pathToROIMask = ''
-    f = open(directory + '%s/%s_extendVoronoiParams.txt' %(realPatientID, realPatientID), "w")
+    f = open(directory + '%s/%s_%sextendVoronoiParams.txt' %(realPatientID, realPatientID, realSide), "w")
 
     volsFull = glob.glob(pathToFullCortex + 'heat/heat_%s_%s_noSulci.nii.gz' %(realPatientID, realSide))
     masks = glob.glob(directory + '%s/%s_T1inT2_ColumnsCutNew20It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realPatientID, realSide))

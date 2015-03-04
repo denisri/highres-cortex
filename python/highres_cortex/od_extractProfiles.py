@@ -46,7 +46,9 @@
 
 
 # example how to run this file:
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py -p he140338 -d /neurospin/lnao/dysbrain/optimiseParmaters_ExtendVoronoi/
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ac140159 -s L -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s L -d /neurospin/lnao/dysbrain/testNewLittleRegion/ad140157_2/
+
 import random
 from soma import aims, aimsalgo
 import subprocess
@@ -60,10 +62,15 @@ import matplotlib.pyplot as plt
 
 
 def extractProfiles(volCoord, volValue, volMask = None):
+    print volCoord.header()
+    
     arrCoord = np.asarray(volCoord)
     arrValue = np.asarray(volValue)
 
     # apply the mask if it was given
+    listOfSeparateCoords = []
+    listOfSeparateValues = []
+   
     if volMask is not None:
         mask = np.asarray(volMask)        
         # get these ROIs
@@ -72,6 +79,26 @@ def extractProfiles(volCoord, volValue, volMask = None):
         
         coords = arrCoord1[arrCoord1 != 0]
         values = arrValue1[arrCoord1 != 0]
+        
+        ids = np.where(arrCoord1 != 0)
+        print len(ids), ' len(ids) ', len(coords), ' len(coords) '
+        # got the ids. now need to get x, y coordinates
+        #print volCoord.getX()[1:10]
+        
+        ########################## now need to extract profiles in ROIs separately
+        # get unique values for the mask
+        roiIds = np.unique(mask[np.where(mask > 0)])
+        for i in roiIds:
+            if i != 0:
+                print 'work with ROI ', i
+                arrCoord1i = arrCoord[mask == i]
+                arrValue1i = arrValue[mask == i]
+                
+                coordsi = arrCoord1i[arrCoord1i != 0]
+                valuesi = arrValue1i[arrCoord1i != 0]
+                
+                listOfSeparateCoords.append(coordsi)
+                listOfSeparateValues.append(valuesi)      
     else :
         coords = arrCoord[arrCoord != 0]
         values = arrValue[arrCoord != 0]
@@ -80,6 +107,9 @@ def extractProfiles(volCoord, volValue, volMask = None):
     res = []
     res.append(coords)
     res.append(values)
+    res.append(roiIds)
+    res.append(listOfSeparateCoords)
+    res.append(listOfSeparateValues)
     return(res)       
     
     
@@ -112,10 +142,10 @@ if __name__ == '__main__':
     if options.realSide is not None:
         realSide = options.realSide
 
-    pathToCoord = directory + '%s/%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID, realPatientID)
+    pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
     pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
-    pathToMask = directory + '%s/%s_T1inT2_ColumnsCutNew20It/' %(realPatientID, realPatientID)
+    pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
     
     volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
     volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
@@ -123,7 +153,7 @@ if __name__ == '__main__':
     volsMask = glob.glob(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
 
     # test if all data is available
-    f = open(directory + '%s/%s_statFileProfiles.txt' %(realPatientID, realPatientID), "w")
+    f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
     if len(volsCoord) != 1 or len(volsMask) != 1:
         # abort the calculation, as too many or not a single texture file was found
         print 'abort the calculation, as too many or not a single volsCoord and volsMask file was found'
@@ -141,13 +171,11 @@ if __name__ == '__main__':
     intensities = result[1]
 
     # plot the data
-    #plt.plot(coordinates, 'bo')
-    #plt.plot(intensities, 'bo')
     plt.plot(coordinates, intensities, '.', c = 'b')
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+    plt.savefig(directory + '%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
 
     
     # repeat for the NEW nobias images!
@@ -156,13 +184,11 @@ if __name__ == '__main__':
     intensities2 = result2[1]
 
     # plot the data
-    #plt.plot(coordinates, 'bo')
-    #plt.plot(intensities, 'bo')
     plt.plot(coordinates2, intensities2, '.', c = 'r')
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+    plt.savefig(directory + '%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
     
     plt.clf()
     plt.close()
@@ -171,9 +197,72 @@ if __name__ == '__main__':
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s/%s_%s_It20_newNobiasT2vsCorticalDepthROI.png' %(realPatientID, realPatientID, realSide))
+    plt.savefig(directory + '%s_%s_It20_newNobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))    
+    plt.clf()
+    plt.close()
+  
+    # save the data for further processing. TODO: find information about their coordinates!!
+    data1 = open(directory + '%s_%s_profiles.txt' %(realPatientID, realSide), "w")
+    data2 = open(directory + '%s_%s_profiles2.txt' %(realPatientID, realSide), "w")
+    headerLine = '\t' + 'DepthCoord' + '\t' + 'Value'
+    data1.write(headerLine + '\n')
+    data2.write(headerLine + '\n')
+    for i in range(len(coordinates)):
+        data1.write(str(i) + '\t' + str(coordinates[i]) + '\t' + str(intensities[i]) + '\n')
+        data2.write(str(i) + '\t' + str(coordinates2[i]) + '\t' + str(intensities2[i]) + '\n')
+    data1.close()
+    data2.close()
+    
+    ## now plot and save the data for individual ROIs
+    iDs = result2[2]
+    listOfCoords = result2[3]
+    listOfValues = result2[4]
+    for i in range(len(iDs)):
+        print 'i = ', i, ' work with id', iDs[i]
+        currCoords = listOfCoords[i]
+        currValues = listOfValues[i]
+        plt.plot(currCoords, currValues, '.', c = 'b')
+        plt.title('Profile in ROI')   # subplot 211 title
+        plt.xlabel('Cortical depth')
+        plt.ylabel('T2-nobias intensity')
+        plt.savefig(directory + '%s_%s_It20_nobiasT2vsCorticalDepth_ROI_' %(realPatientID, realSide) + str(iDs[i]) + '.png')
+        plt.clf()
+        plt.close()
+        
+        data2i = open(directory + '%s_%s_profiles2_ROI_%s.txt' %(realPatientID, realSide, str(iDs[i])), "w")
+        data2i.write(headerLine + '\n')
+        for j in range(len(currCoords)):
+            data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')
+            
+        data2i.close()
 
- 
+
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
     
     
     

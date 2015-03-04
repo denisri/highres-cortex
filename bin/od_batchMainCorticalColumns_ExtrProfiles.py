@@ -80,13 +80,25 @@ numberOfIt = 3   # number of iterations to extend (dilate) the selected regions
 
 #listOfSubjects = ['ac140159', 'ad140157']
 listOfSubjects = ['fg140290', 'af140169', 'ag140439', 'cb140330', 'js140311', 'ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
+#listOfSubjects = ['js140311', 'ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
+#listOfSubjects = ['ml140175']
+#listOfSubjects = ['ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
+#listOfSubjects = ['sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
+
+# done for js140311: L and R
+
+#listOfSubjects = ['cb140330']
 hemispheres = ['L', 'R']
 #hemispheres = ['L']
+#hemispheres = ['R']
 # todo: fill it !!!
+
+# todo: for cb... - need process the right side!!!
 
 for p in listOfSubjects:
     print 'start with subject ', p
     for s in hemispheres:
+        
         print 'start with hemisphere ', s
         
         # 1. run the main cortical columns script for CUT volumes, 
@@ -103,7 +115,7 @@ for p in listOfSubjects:
         
         # 4. extract profiles and plot them
         print 'extract profiles and plot them'
-        subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/', '-p', p, '-s', s])
+        subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' %(p), '-p', p, '-s', s])
     
     
     
