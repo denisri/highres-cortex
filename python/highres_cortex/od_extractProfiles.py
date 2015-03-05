@@ -118,11 +118,16 @@ if __name__ == '__main__':
     realPatientID = None
     directory = None
     realSide = 'L'
+    workOnLaptop = False
+    pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
+    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
+
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
+    parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -142,9 +147,13 @@ if __name__ == '__main__':
     if options.realSide is not None:
         realSide = options.realSide
 
+    if options.workOnLaptop is not None:
+	workOnLaptop = options.workOnLaptop      
+	# if true, then processes are run on the laptop. Change locations of neurospin DBs
+	pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
+	pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
+  
     pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
-    pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
-    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
     pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
     
     volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
