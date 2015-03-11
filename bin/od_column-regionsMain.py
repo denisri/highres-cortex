@@ -40,6 +40,7 @@
 # an example how to run this script
 # time od_column-regionsMain.py -i /volatile/od243208/brainvisa_manual/ml140175/dist/classif_with_outer_boundaries_ml140175_L.nii.gz -d /volatile/od243208/brainvisa_manual/ad140157_columns/ -k ad140157_L
 
+# od_column-regionsMain.py -i /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/af140169/af140169_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_af140169_R_cut_noSulci_extended.nii.gz -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/af140169/af140169_T1inT2_ColumnsCutNew20It/ -k af140169_R_cut_noSulci_extended
 
 from soma import aims, aimsalgo
 import sys, glob, os, subprocess, sys, time
@@ -313,21 +314,20 @@ aims.write(vol1, result_directory + 'merged_randomized_%s.nii.gz' %(keyWord))
 #print np.max(np.array(vol1)) # number of different columns 111067
 
 
-## test for another diameter of cortical columns. E.g. of 3 mm, and 5 mm
-##diams = [3, 5]
-##for diam in diams:
+## test for another diameter of cortical columns. E.g. of 3 mm, and 5 mm, and 9mm
+diams = [3, 5, 7, 9]
+for diam in diams:
 
-#diam = 9
-#subprocess.check_call(['ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord), '--goal-diameter', str(diam)])     
+    subprocess.check_call(['ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord), '--goal-diameter', str(diam)])     
 
-##python relabel.py
-#vol1 = aims.read(result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam))
-#vol2 = highres_cortex.od_relabel.relabel(vol1)
-#aims.write(vol2, result_directory + 'merged_relabelled_%s_diam%s.nii.gz' % (keyWord, diam))
+    #python relabel.py
+    vol1 = aims.read(result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam))
+    vol2 = highres_cortex.od_relabel.relabel(vol1)
+    aims.write(vol2, result_directory + 'merged_relabelled_%s_diam%s.nii.gz' % (keyWord, diam))
 
-##python randomize_labels.py
-#vol1 = highres_cortex.od_randomize_labels.relabel(vol2)
-#aims.write(vol1, result_directory + 'merged_randomized_%s_diam%s.nii.gz' %(keyWord, diam))
+    #python randomize_labels.py
+    vol1 = highres_cortex.od_randomize_labels.relabel(vol2)
+    aims.write(vol1, result_directory + 'merged_randomized_%s_diam%s.nii.gz' %(keyWord, diam))
 
 
 

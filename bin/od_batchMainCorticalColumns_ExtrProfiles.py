@@ -99,24 +99,25 @@ for p in listOfSubjects:
     print 'start with subject ', p
     for s in hemispheres:
         
-        print 'start with hemisphere ', s
+        #print 'start with hemisphere ', s
         
-        # 1. run the main cortical columns script for CUT volumes, 
-        print 'run the main cortical columns script for CUT volumes'
-        subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsCutNew20It/' %(p, p), '-e', '-r', '-c'])
+        ## 1. run the main cortical columns script for CUT volumes, 
+        #print 'run the main cortical columns script for CUT volumes'
+        #subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsCutNew20It/' %(p, p), '-e', '-r', '-c'])
         
-        # 2. run the main cortical columns script for FULL volumes, 
-        print 'run the main cortical columns script for FULL volumes'
-        subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsNew/' %(p, p), '-e', '-r'])
+        ## 2. run the main cortical columns script for FULL volumes, 
+        #print 'run the main cortical columns script for FULL volumes'
+        #subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsNew/' %(p, p), '-e', '-r'])
         
-        # 3. test whether the selected region growing was enough
-        print 'test whether the selected region growing was enough'
-        subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/', '-s', s])
+        ## 3. test whether the selected region growing was enough
+        #print 'test whether the selected region growing was enough'
+        #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/', '-s', s])
         
         # 4. extract profiles and plot them
         print 'extract profiles and plot them'
         subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' %(p), '-p', p, '-s', s])
     
     
-    
+    subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotRightLeftProfiles.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' %(p)])
+
     
