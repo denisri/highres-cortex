@@ -204,13 +204,17 @@ if __name__ == '__main__':
     directory = None
     realSide = 'L'
     columnDiameter = None
+    workOnLaptop = False
+    pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
+    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
-    options, args = parser.parse_args(sys.argv)
+    parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') options, args = parser.parse_args(sys.argv)
+    options, args = parser.parse_args(sys.argv)print options
     print options
     print args   
     
@@ -232,6 +236,12 @@ if __name__ == '__main__':
     if options.columnDiameter is not None:
         columnDiameter = options.columnDiameter
 
+    if options.workOnLaptop is not None:
+	workOnLaptop = options.workOnLaptop      
+	# if true, then processes are run on the laptop. Change locations of neurospin DBs
+	pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
+	pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
+  
     pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
     pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
@@ -251,6 +261,7 @@ if __name__ == '__main__':
         f.close()
         sys.exit(0)
     
+    f.close()        
     volCoord = aims.read(volsCoord[0])  
     volMask = aims.read(volsMask[0])
 
@@ -292,6 +303,7 @@ if __name__ == '__main__':
 
     
     # repeat for the NEW nobias images!
+    result2 = extractProfiles(volCoord, volValue2, volMask)
     coordinates2 = result2[0]
     intensities2 = result2[1]
 
