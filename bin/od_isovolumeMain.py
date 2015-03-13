@@ -96,7 +96,7 @@ arrClassif[arrClassif == 100] = 1
 aims.write(volClassif, result_directory + 'domain_%s.nii' %(keyWord))
  
  
-subprocess.check_call(['time', 'ylAdvectTubes', '--verbose', '--step', '0.05', '--domain', result_directory + 'domain_%s.nii' %(keyWord), '--grad-field', heat_directory + 'heat_%s.nii' %(keyWord), '--divergence', heat_directory + 'heat_div_gradn_%s.nii.gz' %(keyWord), '--output-volumes', result_directory + 'white-tube-volumes_%s.nii.gz' % (keyWord), '--output-surfaces', result_directory + 'white-tube-surfaces_%s.nii.gz' % (keyWord)])
+subprocess.check_call(['time', 'ylAdvectTubes', '--verbose', '--step', '0.05', '--domain', result_directory + 'domain_%s.nii' %(keyWord), '--grad-field', heat_directory + 'heat_%s.nii.gz' %(keyWord), '--divergence', heat_directory + 'heat_div_gradn_%s.nii.gz' %(keyWord), '--output-volumes', result_directory + 'white-tube-volumes_%s.nii.gz' % (keyWord), '--output-surfaces', result_directory + 'white-tube-surfaces_%s.nii.gz' % (keyWord)])
 # time for the whole cortex : 6m48.759s
 
 volWV = aims.read(result_directory + 'white-tube-volumes_%s.nii.gz' % (keyWord))
@@ -111,7 +111,7 @@ del volWS, volWVS
     #-o /volatile/od243208/brainvisa_manual/ml140175/white-tube-VoverS_ml140175_L.nii.gz
 
 
-subprocess.check_call(['time', 'ylAdvectTubes', '--verbose', '--step', '-0.05', '--domain', result_directory + 'domain_%s.nii' %(keyWord), '--grad-field', heat_directory + 'heat_%s.nii' %(keyWord), '--divergence', heat_directory + 'heat_div_gradn_%s.nii.gz' %(keyWord), '--output-volumes', result_directory + 'pial-tube-volumes_%s.nii.gz' % (keyWord), '--output-surfaces', result_directory + 'pial-tube-surfaces_%s.nii.gz' % (keyWord)])
+subprocess.check_call(['time', 'ylAdvectTubes', '--verbose', '--step', '-0.05', '--domain', result_directory + 'domain_%s.nii' %(keyWord), '--grad-field', heat_directory + 'heat_%s.nii.gz' %(keyWord), '--divergence', heat_directory + 'heat_div_gradn_%s.nii.gz' %(keyWord), '--output-volumes', result_directory + 'pial-tube-volumes_%s.nii.gz' % (keyWord), '--output-surfaces', result_directory + 'pial-tube-surfaces_%s.nii.gz' % (keyWord)])
 #time ylAdvectTubes --verbose \
     #--step -0.05 \
     #--domain /volatile/od243208/brainvisa_manual/ml140175/domain_ml140175_L.nii.gz \

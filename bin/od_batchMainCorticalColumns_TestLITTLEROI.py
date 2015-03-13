@@ -79,17 +79,17 @@ numberOfIt = 3   # number of iterations to extend (dilate) the selected regions
 
 
 #listOfSubjects = ['ac140159', 'ad140157']
-listOfSubjects = ['fg140290', 'af140169', 'ag140439', 'cb140330', 'js140311', 'ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
+#listOfSubjects = ['fg140290', 'af140169', 'ag140439', 'cb140330', 'js140311', 'ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
 #listOfSubjects = ['js140311', 'ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
 #listOfSubjects = ['ml140175']
 #listOfSubjects = ['ml140175', 'sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
 #listOfSubjects = ['sg140335', 'ac140159', 'ad140157', 'he140338', 'md140208', 'at140353', 'js140266', 'lg140146']
-
+listOfSubjects = ['ac140155']
 # done for js140311: L and R
 
 #listOfSubjects = ['cb140330']
-hemispheres = ['L', 'R']
-#hemispheres = ['L']
+#hemispheres = ['L', 'R']
+hemispheres = ['L']
 #hemispheres = ['R']
 # todo: fill it !!!
 
@@ -99,15 +99,15 @@ for p in listOfSubjects:
     print 'start with subject ', p
     for s in hemispheres:
         
-        #print 'start with hemisphere ', s
+        print 'start with hemisphere ', s
         
-        ## 1. run the main cortical columns script for CUT volumes, 
-        #print 'run the main cortical columns script for CUT volumes'
-        #subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsCutNew20It/' %(p, p), '-e', '-r', '-c'])
+        # 1. run the main cortical columns script for CUT volumes, 
+        print 'run the main cortical columns script for CUT volumes'
+        subprocess.check_call(['od_mainCorticalColumns_TestLITTLEROI.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testLITTLEROI/%s/%s_T1inT2_ColumnsCutNew20It/' %(p, p), '-e', '-r', '-c'])
         
         ## 2. run the main cortical columns script for FULL volumes, 
         #print 'run the main cortical columns script for FULL volumes'
-        #subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsNew/' %(p, p), '-e', '-r'])
+        #subprocess.check_call(['od_mainCorticalColumns_TestLITTLEROI.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsNew/' %(p, p), '-e', '-r'])
         
         ## 3. test whether the selected region growing was enough
         #print 'test whether the selected region growing was enough'
@@ -115,9 +115,8 @@ for p in listOfSubjects:
         
         # 4. extract profiles and plot them
         print 'extract profiles and plot them'
-        subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' %(p), '-p', p, '-s', s])
+        subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/', '-p', p, '-s', s])
     
     
-    subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotRightLeftProfiles.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' %(p)])
-
+    
     
