@@ -237,13 +237,34 @@ if __name__ == '__main__':
         plt.savefig(directory + '%s_%s_It20_nobiasT2vsCorticalDepth_ROI_' %(realPatientID, realSide) + str(iDs[i]) + '.png')
         plt.clf()
         plt.close()
-        
+             
         data2i = open(directory + '%s_%s_profiles2_ROI_%s.txt' %(realPatientID, realSide, str(iDs[i])), "w")
         data2i.write(headerLine + '\n')
         for j in range(len(currCoords)):
             data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')
             
         data2i.close()
+        
+        
+    for i in range(len(iDs)):
+	print 'i= ', i , ' len(iDs) = ', len(iDs)
+	currCoords = listOfCoords[i]
+	currValues = listOfValues[i]
+	
+	if iDs[i] !=11 and iDs[i] != 21:
+	    plt.plot(currCoords, currValues, '.')
+	
+	if i == (len(iDs) - 1):	
+	    print 'save the plot'
+	    plt.title('Profile in ROI')   # subplot 211 title
+	    plt.xlabel('Cortical depth')
+	    plt.ylabel('T2-nobias intensity')
+	    plt.savefig(directory + '%s_%s_It20_nobiasT2vsCorticalDepth_allLittleROIs' %(realPatientID, realSide) + '.png')
+	    print 'save the plot to ' + directory + '%s_%s_It20_nobiasT2vsCorticalDepth_allLittleROIs' %(realPatientID, realSide) + '.png'
+
+	    plt.clf()
+	    plt.close()
+
 
 
         
