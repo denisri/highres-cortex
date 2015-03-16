@@ -123,7 +123,7 @@ def extractProfiles(volCoord, volValue, volMask = None):
     
 
     
-def extractProfilesInColumns(volCoord, volValue, volColumns, volMask = None):
+def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volMask = None):
     """
     this function takes 2 volumes, one with values (T2) and another with corresponding coordinates (cortex
     depth measure from Yann's scripts.) It also takes a volume with "cortical columns" and will extract 
@@ -141,6 +141,11 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volMask = None):
     # apply the mask if it was given
     listOfSeparateCoords = []
     listOfSeparateValues = []
+    # get columns in certain mask regions    
+    listOfSeparateCoordsMask = []
+    listOfSeparateValuesMask = []
+    listOfROIsInMask = []
+    
    
     if volMask is not None:
         mask = np.asarray(volMask)    
@@ -164,25 +169,46 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volMask = None):
        ########################## now need to extract profiles in ROIs separately
         # get unique values for the mask
         #roiIds = np.unique(roiColumns[np.where(roiColumns > 0)])
-        roiIds = np.unique(roiColumns)
+        roiIds = np.unique(roiColumns[np.where(roiColumns > 0)])  # rois from the cortical columns
+        roisMask = np.unique(mask[np.where(mask > 0)])  # rois from the mask
+        listOfROIsInMask = [[] for x in range(len(roisMask) + 1)]
+        print 'listOfROIsInMask = '
+        print listOfROIsInMask
+        
         #roiIds = np.unique(arrColumns)
         print 'found the following ROIs. their number  ', len(roiIds), ' from total number : ', len(np.unique(arrColumns))
         #print roiIds
         
         for i in roiIds:
             # print len(arrCoord), len(roiColumns)
-            #arrCoord1i = arrCoord[roiColumns == i]
             arrCoord1i = arrCoord1[roiColumns == i]
-            #arrValue1i = arrValue[roiColumns == i]
-            arrValue1i = arrValue1[roiColumns == i]
-           
+            arrValue1i = arrValue1[roiColumns == i]           
             coordsi = arrCoord1i[arrCoord1i != 0]
             valuesi = arrValue1i[arrCoord1i != 0]
             
             print 'work with ROI ', i, ' # of points= ', len(coordsi)
             listOfSeparateCoords.append(coordsi)
-            listOfSeparateValues.append(valuesi)      
+            listOfSeparateValues.append(valuesi)   
+                        
+        # get IDs of columns in various mask regions
+        #print 'len(roisMask) ', len(roisMask)
+        for j in range(len(roisMask)):
+            #print 'roisMask[j] ', roisMask[j]
+            partOfColumns = arrColumns[mask == roisMask[j]]
+            #print 'np.unique(partOfColumns) ', np.unique(partOfColumns)
+            #print 'listOfROIsInMask[j] ', listOfROIsInMask[j]
+            listOfROIsInMask[j] = np.unique(partOfColumns)
+            print 'for mask ROI ', roisMask[j], ' the column IDs are ', len(listOfROIsInMask[j]), ' a list: ', str(listOfROIsInMask[j])
             
+        # check which columns are in both ROIs
+        # TODO!! decide what to do with these ROIs?? NOW - ignore them
+        for i in roiIds:
+            if i != 0 and i in listOfROIsInMask[0] and i in listOfROIsInMask[1]:
+                print 'Column with ID ', i, ' is in both regions'
+                listOfROIsInMask[len(roisMask)].extend([i])               # a list of ROIs to ignore
+         
+            
+        
     #else :   TODO!!!!!!!!!!!!!!!!!!!!!!!!!!
         #coords = arrCoord[arrCoord != 0]
         #values = arrValue[arrCoord != 0]
@@ -194,6 +220,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volMask = None):
     res.append(roiIds)
     res.append(listOfSeparateCoords)
     res.append(listOfSeparateValues)
+    res.append(listOfROIsInMask)
     return(res)       
     
 
@@ -207,15 +234,17 @@ if __name__ == '__main__':
     workOnLaptop = False
     pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
-
+    minColumnSize = 10 # depends on the diameter
+    heights = []
+    minColumnSizes = []
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
-    parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') options, args = parser.parse_args(sys.argv)
-    options, args = parser.parse_args(sys.argv)print options
+    parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
+    options, args = parser.parse_args(sys.argv)
     print options
     print args   
     
@@ -254,42 +283,65 @@ if __name__ == '__main__':
     volsMask = glob.glob(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
 
     # test if all data is available
-    f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
     if len(volsCoord) != 1 or len(volsMask) != 1:
         # abort the calculation, as too many or not a single texture file was found
         print 'abort the calculation, as too many or not a single volsCoord and volsMask file was found'
+        f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
         f.write('abort the calculation, as ' + str(len(volsCoord)) + ' volsCoord and ' + str(len(volsMask)) + ' volsMask files were found' + '\n')
         f.close()
-        sys.exit(0)
-    
-    f.close()        
+        sys.exit(0)    
+        f.close()        
+        
     volCoord = aims.read(volsCoord[0])  
     volMask = aims.read(volsMask[0])
-
+    
+    
     # if no columns diameter was given, then extract profiles in the mask
     if columnDiameter is None:
         print '******************* no columns diameter was given, then extract profiles in the mask ***************************'    
         #result = extractProfiles(volCoord, volValue, volMask)
         # repeat for the NEW nobias images!
         result2 = extractProfiles(volCoord, volValue2, volMask)
-    else:
+    else:   # we work with columns! then calculate the required size. 
+        columnDiameter = options.columnDiameter
+        # human cortical thickness 2 - 4mm
+        voxelSizeMax = np.max(volValue.header()['voxel_size'][0:3])
+        voxelSizeMin = np.min(volValue.header()['voxel_size'][0:3])
+        heightMax = int(np.round(4.0 / voxelSizeMin))
+        heightMin = int(np.round(2.0 / voxelSizeMax))
+        print 'heights of the cortical columns found heightMin = ', heightMin, ' heightMax = ', heightMax
+        #heights = range(heightMin, heightMax + 1)
+        # just for test: to see the influence of really large columns
+        heights = range(heightMin, heightMax + 8)
+       # using this info: calculate minimal cortical column sizes
+        
+        # average size         
+        minColumnSize = int(np.round(int(columnDiameter) * int(columnDiameter) / 4 * np.pi * np.average(heights))) 
+        print 'calculated the minColumnSize = ', minColumnSize
+
+        # a list of sizes        
+        minColumnSizes = [int(k * int(columnDiameter) * int(columnDiameter) / 4 * np.pi) for k in heights]
+        print 'calculated a range of possible column sizes: '
+        print minColumnSizes
+        
+        # start the processing for columns
         print '******************* columns diameter was given, then extract profiles in the columns ***************************'    
         # read in the columns file
         volsColumns = glob.glob(directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/' %(realPatientID) + 'merged_randomized_%s_%s_cut_noSulci_extended_diam%s.nii.gz' %(realPatientID, realSide, str(columnDiameter)))
 
         if len(volsColumns) != 1:# abort the calculation, as too many or not a single columns file was found
             print 'abort the calculation, as too many or not a single volsColumns file was found'
+            f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
             f.write('abort the calculation, as ' + str(len(volsColumns)) + ' volsColumns files were found' + '\n')
             f.close()
             sys.exit(0)
+            f.close()
 
         volColumns = aims.read(volsColumns[0])  
         print 'volColumns = ', volsColumns[0]
-        #result = extractProfilesInColumns(volCoord, volValue, volColumns, volMask)
+        #result = extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volMask)
         # repeat for the NEW nobias images!
-        result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volMask)
-
-    f.close()        
+        result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, minColumnSize, volMask)      
     
     # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
     #coordinates = result[0]
@@ -302,9 +354,6 @@ if __name__ == '__main__':
     #plt.ylabel('T2-nobias intensity')
     #plt.savefig(directory + '%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
 
-    
-    # repeat for the NEW nobias images!
-    result2 = extractProfiles(volCoord, volValue2, volMask)
     coordinates2 = result2[0]
     intensities2 = result2[1]
 
@@ -322,7 +371,7 @@ if __name__ == '__main__':
     plt.title('Profile in ROI')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s_%s_It20_newNobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))    
+    plt.savefig(directory + '%s_%s_newNobiasT2ROIs.png' %(realPatientID, realSide))    
     plt.clf()
     plt.close()
   
@@ -342,15 +391,19 @@ if __name__ == '__main__':
     iDs = result2[2]
     listOfCoords = result2[3]
     listOfValues = result2[4]
+    
     addedColumnsDiamName = ''
     pathForFiles = directory
     if columnDiameter is not None:
-        addedColumnsDiamName = '_diam%s_' %(columnDiameter)
+        addedColumnsDiamName = '_diam%s' %(columnDiameter)
         # if the result was for the columns, create a separate folder for it
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)
         if not os.path.exists(pathForFiles):
             os.makedirs(pathForFiles)
     
+        # read in the results for columns IDs in various regions
+        iDsInMaskROIs = result2[5]
+        
     for i in range(len(iDs)):
         #print 'i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
@@ -359,18 +412,193 @@ if __name__ == '__main__':
         plt.title('Profile in ROI')   # subplot 211 title
         plt.xlabel('Cortical depth')
         plt.ylabel('T2-nobias intensity')
-        plt.savefig(pathForFiles + '%s_%s_It20_nobiasT2vsCorticalDepth%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')
+        plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')
         plt.clf()
         plt.close()
-        
+
         data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
         data2i.write(headerLine + '\n')
         for j in range(len(currCoords)):
-            data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')
-            
+            data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
         data2i.close()
+        
+        ## if we work with columns: add to the list if this is a large column
+        #if columnDiameter is not None:
+            #if i in iDsLarge:
+                #coordsFromLargeColumns.extend(currCoords)
+                #valuesFromLargeColumns.extend(currValues)
+                
+            
+    # plot the ROIs from the mask (columns of any size) on one plot
+    roiNames = ''
+    for i in range(len(iDs)):
+        roiNames += '_' + str(iDs[i])
+        currCoords = listOfCoords[i]
+        currValues = listOfValues[i]
+        plt.plot(currCoords, currValues, '.')
+        plt.title('Profile in mask ROIs')   
+        plt.xlabel('Cortical depth')
+        plt.ylabel('T2-nobias intensity')
+        
+    if columnDiameter is not None:
+        roiNames = '_allColumns'    
+    plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROIs%s' %(realPatientID, realSide, addedColumnsDiamName, roiNames) + '.png')
+    plt.clf()
+    plt.close() 
+     
+                
+    # get results for various sizes of columns
+    if columnDiameter is not None:
+        listsOfCoordsForLargeColumns = [[] for x in range(len(heights))]
+        listsOfValuesForLargeColumns = [[] for x in range(len(heights))] 
+        listsOfIDsForLargeColumns = [[] for x in range(len(heights))] 
+        listsOfNumbersLargeColumns = [0] * len(heights)
+        for i in range(len(iDs)):
+            currCoords = listOfCoords[i]
+            currValues = listOfValues[i]
+            #print 'iDs ', iDs[i], len(currCoords)
+            for j in range(len(minColumnSizes)):
+                #print 'work with minColumnSizes[j] ', minColumnSizes[j]
+                if len(currCoords) > minColumnSizes[j]:
+                    # add these data to the respective list element                    
+                    #print 'this column size ', len(currCoords), ' is larger than ', minColumnSizes[j], ' old len= ', len(listsOfCoordsForLargeColumns[j])
+                    listsOfCoordsForLargeColumns[j].extend(currCoords)
+                    listsOfValuesForLargeColumns[j].extend(currValues)
+                    listsOfIDsForLargeColumns[j].extend([iDs[i]])
+                    listsOfNumbersLargeColumns[j] = listsOfNumbersLargeColumns[j] + 1
+                    #print ' new len= ', len(listsOfCoordsForLargeColumns[j])
+
+        # now we have info for each min column size. plot it
+        for j in range(len(minColumnSizes)):
+            print 'number of columns over ', minColumnSizes[j], ' is ', listsOfNumbersLargeColumns[j], ' from ', len(iDs), ' from ', len(np.unique(np.asarray(volColumns)))
+            plt.plot(listsOfCoordsForLargeColumns[j], listsOfValuesForLargeColumns[j], '.', c = 'r')
+            plt.title('Profile in cortical columns larger %s' %(minColumnSizes[j]))   # subplot 211 title
+            plt.xlabel('Cortical depth')
+            plt.ylabel('T2-nobias intensity')
+            plt.savefig(directory + '%s_%s_newNobiasT2_diam%s_over%s.png' %(realPatientID, realSide, str(columnDiameter), minColumnSizes[j]))    
+            plt.clf()
+            plt.close()
+            
+            # plot the data from all cortical columns and from the large ones together
+            plt.plot(coordinates2, intensities2, '.', c = 'b')
+            plt.title('Profile in cortical columns larger %s vs. all points' %(minColumnSizes[j]))   # subplot 211 title
+            plt.xlabel('Cortical depth')
+            plt.ylabel('T2-nobias intensity')
+            plt.plot(listsOfCoordsForLargeColumns[j], listsOfValuesForLargeColumns[j], '.', c = 'r')
+            plt.clf()
+            plt.close()    
+            
+            # write out a file with IDs of columns that are larger than this threshold
+            dataID = open(pathForFiles + '%s_%s_IDs%s_over_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(minColumnSizes[j])), "w")
+            string = ''
+            for l in listsOfIDsForLargeColumns[j]:
+                string += str(l) + '\t'                
+            dataID.write(string)
+            dataID.close()
+            
+        # now plot avg profiles for various mask regions
+        listOfIDsToIgnore = iDsInMaskROIs[len(iDsInMaskROIs) - 1]
+        listsOfCoordsForMask = [[] for x in range(len(iDsInMaskROIs) - 1)]
+        listsOfValuesForMask = [[] for x in range(len(iDsInMaskROIs) - 1)] 
+        
+        # lists of ROIs of various sizes
+        listsOfCoordsForMaskVariousThr = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
+        listsOfValuesForMaskVariousThr = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)] 
+
+        
+        maskArray = np.asarray(volMask)
+        maskROIids = np.unique(maskArray[np.where(maskArray > 0)])
+        
+        for j in range(len(maskROIids)):
+            listOfIDs = iDsInMaskROIs[j]
+            for k in listOfIDs:
+                # check if we need to ignore this data
+                if k not in listOfIDsToIgnore and k != 0:                
+                    # get the ID of this column in the original data
+                    #print 'iDs ='
+                    #print iDs
+                    #print 'k = ', k
+                    indexOfThisID = np.where(iDs == k)[0][0]
+                    #print 'indexOfThisID ', indexOfThisID
+                    currCoords = listOfCoords[indexOfThisID]
+                    currValues = listOfValues[indexOfThisID]
+                    
+                    ## TODO: check the size of this column!! - compare to one threshold
+                   # if len(currCoords) > 500:
+                    #    listsOfCoordsForMask[j].extend(currCoords)
+                    #    listsOfValuesForMask[j].extend(currValues)
+                    
+                    for t in range(len(minColumnSizes)):
+                        #print t, j
+                        if len(currCoords) > minColumnSizes[t]:
+                            listsOfCoordsForMaskVariousThr[j][t].extend(currCoords)
+                            listsOfValuesForMaskVariousThr[j][t].extend(currValues)   
+                            
+                            
+                            
+        # plot the data for mask rois of large columns (various size thresholds). For ROIs separately, and together
+        for t in range(len(minColumnSizes)):
+            plt.plot()
+            plt.title('Profile in Mask ROIs of large cortical columns')   
+            plt.xlabel('Cortical depth')
+            plt.ylabel('T2-nobias intensity')
+            roiNames = ''
+
+            for j in range(len(maskROIids)):
+                roiNames += '_' + str(maskROIids[j])
+                plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.')
+                #plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', c = 'b') 
+                #plt.title('Profile in Mask ROI of large cortical columns')   
+                #plt.xlabel('Cortical depth')
+                #plt.ylabel('T2-nobias intensity')
+                #plt.savefig(directory + '%s_%s_nobiasT2_ROI_' %(realPatientID, realSide) + str(maskROIids[j]) + '%s_over%s.png' %(addedColumnsDiamName, minColumnSizes[t]))
+                #plt.clf()
+                #plt.close()
+                
+            plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s.png' %(addedColumnsDiamName, minColumnSizes[t]))
+            plt.clf()
+            plt.close()
 
 
+        # now plot the data for mask rois of large columns - FOR 1 threshold!
+        #plt.plot(listsOfCoordsForMask[j], listsOfValuesForMask[j], '.', c = 'b')
+        #plt.title('Profile in ROI of large cortical columns')   # subplot 211 title
+        #plt.xlabel('Cortical depth')
+        #plt.ylabel('T2-nobias intensity')
+        #plt.savefig(directory + '%s_%s_nobiasT2_ROI_' %(realPatientID, realSide) + str(maskROIids[j]) + '%s_over500.png' %(addedColumnsDiamName))
+        #plt.clf()
+        #plt.close()
+            
+       
+        
+   
+                    
+            
+    
+    
+    
+    
+                
+    #if columnDiameter is not None:
+        #plt.plot(coordsFromLargeColumns, valuesFromLargeColumns, '.', c = 'r')
+        #plt.title('Profile in large cortical columns')   # subplot 211 title
+        #plt.xlabel('Cortical depth')
+        #plt.ylabel('T2-nobias intensity')
+        #plt.savefig(directory + '%s_%s_newNobiasT2_ColumnsOver%s.png' %(realPatientID, realSide, minColumnSize))    
+        #plt.clf()
+        #plt.close()
+        
+        ## plot the data from all cortical columns and from the large ones together
+        #plt.plot(coordinates2, intensities2, '.', c = 'b')
+        #plt.title('Profile in ROI')   # subplot 211 title
+        #plt.xlabel('Cortical depth')
+        #plt.ylabel('T2-nobias intensity')
+        #plt.plot(coordsFromLargeColumns, valuesFromLargeColumns, '.', c = 'r')
+        #plt.savefig(directory + '%s_%s_newNobiasT2_AllvsColumnsOver%s.png' %(realPatientID, realSide, minColumnSize)) 
+        #plt.clf()
+        #plt.close()    
+        #print 'number of large columns is ', len(iDsLarge), ' from ', len(iDs), ' from ', len(np.unique(np.asarray(volColumns)))
+    
         
     
     
