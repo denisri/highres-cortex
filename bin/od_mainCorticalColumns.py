@@ -66,6 +66,7 @@ hemisphere = 'left'
 
 realPatientID = None  # ac140155
 pathToClassifFile = None #'/volatile/od243208/brainvisa_manual/%s/GWNoInnerSulciSkel_%s_%s.nii.gz' %(realPatientID, realPatientID, realSide)
+pathToNotExendedGWClassif = None
 pathToT2File = None
 data_directory = None
 keyWord = None
@@ -298,6 +299,7 @@ if eliminateSulci is True:
         volGW = aims.read(pathToClassifFile)
         volGWCut = highres_cortex.od_cutOutRois.excludeROI(volGW, volVorCorr, 100, 0)
         pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
+        pathToNotExendedGWClassif = data_directory + 'notExtendedGWsegm.nii.gz'
         aims.write(volGWCut, pathToClassifFile)    
         print 'volVorCorr ', data_directory +  'voronoiCorr_%s.nii.gz' %(keyWord)
         
@@ -489,8 +491,12 @@ print 'after all: keyWord', keyWord, ' and pathToClassifFile ', pathToClassifFil
 
 ## launch the distance map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
 t0dist = timeit.default_timer()
+
+###################### TODO: check/correct/remove it
+###################### just for test!!!! give as another parameter GW classif file not extended!! to calculate profiles there later!!!
+
 subprocess.check_call(['time', 'od_distmapsMain.py', 
-'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+'-i', pathToClassifFile, '-d', data_directory, '-k', keyWord]) #, '-j', pathToNotExendedGWClassif])
 t1dist = timeit.default_timer()
 
 ### launch the heat map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
