@@ -45,6 +45,7 @@
 # this is the main script to run on a classified GW volume
 # it launches scripts by Yann Leprince: dist, heat, isovolume, column-regions to compute 'cortical columns'
 
+# od_mainCorticalColumns.py -p ad140157 -s R -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/ad140157_T1inT2_ColumnsCutNew20It/ -e -r
 
 # od_mainCorticalColumns.py -p md140208 -s L -d /volatile/od243208/brainvisa_manual/md140208_T1inT2_ColumnsNew/ -e -r
 
@@ -247,6 +248,7 @@ if cutOut is True:
     # perform the Voronoi classification in the given GW segmentation volume using the seeds from the texture    
     #print volGWBorder.header()
     print '######################### start Voronoi #################################'
+    aims.write(volGWBorder, data_directory + 'givenToVoronoi_%s.nii.gz' %(keyWord))  # TODO: delete it later
     volVoronoi = highres_cortex.od_cutOutRois.voronoiFromTexture(volGWBorder, texture, volHemi, 0, data_directory, keyWord)
     # created the Voronoi classification that was  'cleaned' from the 'zero' value from texture
     
@@ -256,6 +258,9 @@ if cutOut is True:
     pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
     aims.write(volGWCut, pathToClassifFile)
     
+
+# TODO- delete it after test!!!!
+sys.exit(0)
     
 ############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
 print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
@@ -495,6 +500,10 @@ t0dist = timeit.default_timer()
 ###################### TODO: check/correct/remove it
 ###################### just for test!!!! give as another parameter GW classif file not extended!! to calculate profiles there later!!!
 
+# write out a file with commands
+commands = ''
+commands = commands + 'od_distmapsMain.py \n' + 'time', 'od_distmapsMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord + '\n'
+
 subprocess.check_call(['time', 'od_distmapsMain.py', 
 '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord]) #, '-j', pathToNotExendedGWClassif])
 t1dist = timeit.default_timer()
@@ -505,15 +514,18 @@ t0heat = timeit.default_timer()
 # launch this process for images in initial T1 space:
 if options.workOnT1inT2Space is not None:    
     print 'start heat calculation for images in T2 space resampled from T1'
+    commands = commands + 'od_heatMain.py \n' + 'time', 'od_heatMain.py', '-i', pathToClassifFile, '-r', '-d', data_directory, '-k', keyWord + '\n'
     subprocess.check_call(['time', 'od_heatMain.py', '-i', pathToClassifFile, '-r', '-d', data_directory, '-k', keyWord])
 else:
     print 'start heat calculation for images in initial T1 space'
+    commands = commands + 'od_heatMain.py \n' + 'time', 'od_heatMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord + '\n'
     subprocess.check_call(['time', 'od_heatMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
 
 t1heat = timeit.default_timer()
 
 ## launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
 t0iso = timeit.default_timer()
+commands = commands + 'od_isovolumeMain.py \n' + 'time', 'od_isovolumeMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord + '\n'
 subprocess.check_call(['time', 'od_isovolumeMain.py', 
 '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
 t1iso = timeit.default_timer()
@@ -521,6 +533,7 @@ t1iso = timeit.default_timer()
 ## launch the calculation of the 'cortical columns' # classif file must be here with 100, 200, 0 , 50 and 150
 t0col = timeit.default_timer()
 pathToClassifWithBorders = data_directory + 'dist/classif_with_outer_boundaries_%s.nii.gz' %(keyWord)
+commands = commands + 'od_column-regionsMain.py \n' + 'time', 'od_column-regionsMain.py', '-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord + '\n'
 subprocess.check_call(['time', 'od_column-regionsMain.py', 
 '-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord])
 t1col = timeit.default_timer()
@@ -536,18 +549,25 @@ content = [str(headerClassif['sizeX']), str(headerClassif['sizeY']), str(headerC
 headerLine = ('\t').join(header)
 contentLine = ('\t').join(content)
 statFileName = data_directory + "statFile_%s" %(keyWord)
+commandsFileName = data_directory + "commandsFile_%s" %(keyWord)
 
 # note if the processing was performed on laptop:
 if workOnLaptop:
     statFileName += '_laptop.txt'
+    commandsFileName += '_laptop.txt'
 else:
     statFileName += '.txt'
+    commandsFileName += '.txt'
 
 f = open(statFileName, "w")
 f.write(headerLine + '\n')
 f.write(contentLine + '\n')
 f.close()
-    
+
+comm = open(commandsFileName, "w")
+comm.write(commands + '\n')
+comm.close()
+   
     
     
     
