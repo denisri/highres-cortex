@@ -35,17 +35,17 @@ The fact that you are presently reading this means that you have had
 knowledge of the CeCILL licence and that you accept its terms.
 */
 
-#include <highres-cortex/cortex_column_region_quality.hh>
+#include "cortex_column_region_quality.hh"
 
 
-#include <highres-cortex/cortex_column_region_quality.tcc>
+#include "cortex_column_region_quality.tcc"
 
 template yl::CortexColumnRegionQuality::Cache
 yl::CortexColumnRegionQuality::cache<int32_t>(
   const LabelVolume<int32_t>&, int32_t) const;
-template float yl::CortexColumnRegionQuality::evaluate<int32_t>(
+template float yl::CortexColumnRegionQuality::fusion_ordering<int32_t>(
   const LabelVolume<int32_t>&, int32_t) const;
-template float yl::CortexColumnRegionQuality::evaluate<int32_t>(
+template float yl::CortexColumnRegionQuality::fusion_ordering<int32_t>(
   const LabelVolume<int32_t>&, int32_t, int32_t) const;
 
 
@@ -66,17 +66,12 @@ float diameter_to_pseudo_area(float diameter)
 
 yl::CortexColumnRegionQuality::
 CortexColumnRegionQuality(const VolumeRef<float>& CSF_projections,
-                          const VolumeRef<float>& white_projections)
+                          const VolumeRef<float>& white_projections,
+                          const VolumeRef<int16_t>& classif)
   : m_CSF_projections(CSF_projections),
-    m_white_projections(white_projections)
+    m_white_projections(white_projections),
+    m_classif(classif)
 {
-  std::vector<float> voxel_size = CSF_projections->getVoxelSize();
-  voxel_size.resize(3);
-  std::sort(voxel_size.begin(), voxel_size.end());
-  std::copy(voxel_size.begin(), voxel_size.end(), m_sorted_voxel_sizes);
-
-  m_pseudo_area_reliability_threshold
-    = 0.5 * m_sorted_voxel_sizes[0] * m_sorted_voxel_sizes[1];
   setShapeParametres(default_goal_diameter());
   assert(m_CSF_projections.getSizeT() == 3);
   assert(m_white_projections.getSizeT() == 3);
@@ -86,6 +81,7 @@ void
 yl::CortexColumnRegionQuality::
 setShapeParametres(float goal_diameter)
 {
+  assert(goal_diameter >= 0.f);
   m_pseudo_area_cutoff = diameter_to_pseudo_area(goal_diameter);
 }
 
