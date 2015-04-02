@@ -98,6 +98,7 @@ def voronoiFromTexture(volGW_border, tex, hemi, stopLabel, directory, keyWord):
     # Voronoi classification
     subprocess.call(['AimsVoronoi', '-i', directory + 'seedsNoWM_%s.nii.gz' %(keyWord), '-o', directory +  'voronoi_%s.nii.gz' %(keyWord), '-d', '32767', '-f', str(stopLabel)]) 
     volVoronoi = aims.read(directory +  'voronoi_%s.nii.gz' %(keyWord))
+    aims.write(volVoronoi, directory +  'outputFromVoronoi_%s.nii.gz' %(keyWord))   #TODO! delete it later!
     
     # label '0' in texture was transformed into '1'. So we will set all voxels with value '1' to '0'
     arrVor = np.array(volVoronoi, copy = False)
