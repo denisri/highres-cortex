@@ -50,6 +50,7 @@ import highres_cortex.cortex_topo, highres_cortex.div_gradn, highres_cortex.od_g
 
 #read in the path and the directory
 pathToClassifFile = None 
+pathToClassifFileWithoutBorders = None 
 data_directory = None
 result_directory = None
 heat_directory = None
@@ -57,6 +58,7 @@ keyWord = None
 
 parser = OptionParser('Calculate column-regions in a cortical region')
 parser.add_option('-i', dest='pathToClassifFile', help='Path to the volume with labeled cortex (100), and white matter (200), as well as the borders (50 and 150)')   # if nothing is given: exit
+parser.add_option('-j', dest='pathToClassifFileWithoutBorders', help='Path to the volume with labeled cortex (100), and white matter (200)')   # if nothing is given: exit
 parser.add_option('-d', dest='data_directory', help='directory for the results') # if nothing is given exit
 parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (including the patient ID and the hemisphere)') # if nothing is given exit
 
@@ -66,13 +68,19 @@ print args
 
 if options.pathToClassifFile is None:
     print >> sys.stderr, 'New: exit. No classification volume was given'
-    sys.exit(1)
+    sys.exit(0)
 else:
     pathToClassifFile = options.pathToClassifFile
     
+if options.pathToClassifFileWithoutBorders is None:
+    print >> sys.stderr, 'New: exit. No pathToClassifFileWithoutBorders volume was given'
+    sys.exit(0)
+else:
+    pathToClassifFileWithoutBorders = options.pathToClassifFileWithoutBorders
+    
 if options.data_directory is None:
     print >> sys.stderr, 'New: exit. No directory for results was given'
-    sys.exit(1)
+    sys.exit(0)
 else:
     data_directory = options.data_directory
     result_directory = data_directory + 'column_regions/'
@@ -82,7 +90,7 @@ else:
     
 if options.keyWord is None:
     print >> sys.stderr, 'New: exit. No keyword for results was given'
-    sys.exit(1)
+    sys.exit(0)
 else:
     keyWord = options.keyWord
     
@@ -293,13 +301,31 @@ volRelabeledConj = highres_cortex.od_relabel_conjunction.relabel_conjunctions(vo
 aims.write(volRelabeledConj, result_directory + 'conjunction_%s.nii.gz' % (keyWord))
 
 
+# Yann added to ensure cortical columns traverse the cortex: 
+#AimsConnectComp -c 26 \
+    #-i conjunction.nii.gz \
+    #-o conjunction_connected.nii.gz
+subprocess.check_call(['AimsConnectComp', '-c', '26', '-i', result_directory + 'conjunction_%s.nii.gz' % (keyWord), '-o', result_directory + 'conjunction_connected_%s.nii.gz' % (keyWord)])
+
+
+
 #ylMergeCortexColumnRegions --verbose 2 \
     #-i conjunction.nii.gz \
     #-o merged.nii \
     #--proj-csf heat_CSF_points_on_bulk.nii.gz \
     #--proj-white heat_white_points_on_bulk.nii.gz \
     #--goal-diameter 1
-subprocess.check_call(['time', 'ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s.nii' %(keyWord), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord), '--goal-diameter', '1'])     
+
+# Yann changed!! to ensure cortical columns traverse the cortex and various diameters are allowed: 
+#ylMergeCortexColumnRegions --verbose 2 \
+    #-i conjunction_connected.nii.gz \
+    #-o merged.nii \
+    #--proj-csf heat_CSF_points_on_bulk.nii.gz \
+    #--proj-white heat_white_points_on_bulk.nii.gz \
+    #--classif ../classif.nii.gz \
+    #--goal-diameter 1
+
+subprocess.check_call(['time', 'ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_connected_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s.nii' %(keyWord), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord),  '--classif', pathToClassifFileWithoutBorders, '--goal-diameter', '1'])     
 # time for the full cortex : 0:58.83
 
 #python relabel.py
@@ -310,15 +336,16 @@ aims.write(vol2, result_directory + 'merged_relabelled_%s.nii.gz' % (keyWord))
 #python randomize_labels.py
 vol1 = highres_cortex.od_randomize_labels.relabel(vol2)
 aims.write(vol1, result_directory + 'merged_randomized_%s.nii.gz' %(keyWord))
-
-#print np.max(np.array(vol1)) # number of different columns 111067
+print np.max(np.array(vol1)) # number of different columns 111067
 
 
 ## test for another diameter of cortical columns. E.g. of 3 mm, and 5 mm, and 9mm
+#diams = [3, 5, 7, 9]
+#diams = [9]
 diams = [3, 5, 7, 9]
 for diam in diams:
 
-    subprocess.check_call(['ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord), '--goal-diameter', str(diam)])     
+    subprocess.check_call(['ylMergeCortexColumnRegions', '--verbose', '2', '-i', result_directory + 'conjunction_connected_%s.nii.gz' % (keyWord), '-o',result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam), '--proj-csf', result_directory + 'heat_CSF_points_on_bulk_%s.nii.gz' % (keyWord), '--proj-white', result_directory + 'heat_white_points_on_bulk_%s.nii.gz' % (keyWord), '--classif', pathToClassifFileWithoutBorders, '--goal-diameter', str(diam)])     
 
     #python relabel.py
     vol1 = aims.read(result_directory + 'merged_%s_diam%s.nii' %(keyWord, diam))
@@ -328,6 +355,8 @@ for diam in diams:
     #python randomize_labels.py
     vol1 = highres_cortex.od_randomize_labels.relabel(vol2)
     aims.write(vol1, result_directory + 'merged_randomized_%s_diam%s.nii.gz' %(keyWord, diam))
+    
+    print np.max(np.array(vol1)) # number of different columns
 
 
 

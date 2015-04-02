@@ -260,7 +260,7 @@ if cutOut is True:
     
 
 # TODO- delete it after test!!!!
-sys.exit(0)
+#sys.exit(0)
     
 ############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
 print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
@@ -502,7 +502,7 @@ t0dist = timeit.default_timer()
 
 # write out a file with commands
 commands = ''
-commands = commands + 'od_distmapsMain.py \n' + 'time', 'od_distmapsMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord + '\n'
+commands = commands + 'od_distmapsMain.py \n' + 'time ' + 'od_distmapsMain.py ' + '-i ' + pathToClassifFile + ' -d ' + data_directory + ' -k ' + keyWord + '\n'
 
 subprocess.check_call(['time', 'od_distmapsMain.py', 
 '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord]) #, '-j', pathToNotExendedGWClassif])
@@ -514,18 +514,18 @@ t0heat = timeit.default_timer()
 # launch this process for images in initial T1 space:
 if options.workOnT1inT2Space is not None:    
     print 'start heat calculation for images in T2 space resampled from T1'
-    commands = commands + 'od_heatMain.py \n' + 'time', 'od_heatMain.py', '-i', pathToClassifFile, '-r', '-d', data_directory, '-k', keyWord + '\n'
+    commands = commands + 'od_heatMain.py \n' + 'time ' + 'od_heatMain.py '+ '-i '+ pathToClassifFile+ ' -r '+ '-d '+ data_directory+ ' -k '+ keyWord + '\n'
     subprocess.check_call(['time', 'od_heatMain.py', '-i', pathToClassifFile, '-r', '-d', data_directory, '-k', keyWord])
 else:
     print 'start heat calculation for images in initial T1 space'
-    commands = commands + 'od_heatMain.py \n' + 'time', 'od_heatMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord + '\n'
+    commands = commands + 'od_heatMain.py \n' + 'time '+ 'od_heatMain.py '+ '-i '+ pathToClassifFile+ ' -d '+ data_directory+ ' -k '+ keyWord + '\n'
     subprocess.check_call(['time', 'od_heatMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
 
 t1heat = timeit.default_timer()
 
 ## launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
 t0iso = timeit.default_timer()
-commands = commands + 'od_isovolumeMain.py \n' + 'time', 'od_isovolumeMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord + '\n'
+commands = commands + 'od_isovolumeMain.py \n' + 'time '+ 'od_isovolumeMain.py '+ '-i '+ pathToClassifFile+ ' -d '+ data_directory+ ' -k '+ keyWord + '\n'
 subprocess.check_call(['time', 'od_isovolumeMain.py', 
 '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
 t1iso = timeit.default_timer()
@@ -533,9 +533,9 @@ t1iso = timeit.default_timer()
 ## launch the calculation of the 'cortical columns' # classif file must be here with 100, 200, 0 , 50 and 150
 t0col = timeit.default_timer()
 pathToClassifWithBorders = data_directory + 'dist/classif_with_outer_boundaries_%s.nii.gz' %(keyWord)
-commands = commands + 'od_column-regionsMain.py \n' + 'time', 'od_column-regionsMain.py', '-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord + '\n'
+commands = commands + 'od_column-regionsMain.py \n' + 'time '+ 'od_column-regionsMain.py '+ '-i '+ pathToClassifWithBorders+ ' -j ' + pathToClassifFile + ' -d '+ data_directory+ ' -k '+ keyWord + '\n'
 subprocess.check_call(['time', 'od_column-regionsMain.py', 
-'-i', pathToClassifWithBorders, '-d', data_directory, '-k', keyWord])
+'-i', pathToClassifWithBorders, '-j', pathToClassifFile, '-d', data_directory, '-k', keyWord])
 t1col = timeit.default_timer()
 
 tDist = t1dist - t0dist
