@@ -145,6 +145,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
     listOfSeparateCoordsMask = []
     listOfSeparateValuesMask = []
     listOfROIsInMask = []
+    listOfSizes = []
     
    
     if volMask is not None:
@@ -186,9 +187,10 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
             coordsi = arrCoord1i[arrCoord1i != 0]
             valuesi = arrValue1i[arrCoord1i != 0]
             
-            print 'work with ROI ', i, ' # of points= ', len(coordsi)
+            #print 'work with ROI ', i, ' # of points= ', len(coordsi)
             listOfSeparateCoords.append(coordsi)
             listOfSeparateValues.append(valuesi)   
+            listOfSizes.append(len(coordsi))
                         
         # get IDs of columns in various mask regions
         #print 'len(roisMask) ', len(roisMask)
@@ -204,7 +206,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
         # TODO!! decide what to do with these ROIs?? NOW - ignore them - 
         for i in range(len(roiIds)):
             if roiIds[i] != 0 and roiIds[i] in listOfROIsInMask[0] and roiIds[i] in listOfROIsInMask[1]:
-                print 'Column with ID ', roiIds[i], ' is in both regions'
+                #print 'Column with ID ', roiIds[i], ' is in both regions'
                 listOfROIsInMask[len(roisMask)].extend([roiIds[i]])               # a list of ROIs to ignore
                 
                 # check what percentage of this column is in each mask ROI
@@ -214,8 +216,30 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
                     numbers.append(len(w))                
                 print 'Column with ID ', roiIds[i], ' is in both regions. % in mask ROIs ', ' is ', numbers
                 
-                # TODO! analyze these numbers
-                # compare the max. to the second largest number. e.g. If the max is > 4 times than the second max : use it for the respective ROI. else: split.
+                ## TODO! analyze these numbers
+                # TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
+                ## compare the max. to the second largest number. e.g. If the max is > 4 times than the second max : use it for the respective ROI. else: split.
+                #sortedNums = sorted(range(len(numbers)), key=lambda k: numbers[k])
+                #maxPart = numbers[sortedNums[len(numbers) - 1]]
+                #max2Part = numbers[sortedNums[len(numbers) - 2]]
+                #ratio = maxPart/max2Part
+                #print 'ratio = ', ratio
+                
+                ## e.g. the max is > 4 times than the second max : use it for the respective ROI. else: split.
+                #if ratio > 5.0:
+                    #print 'this column will belong to ROI # ', sortedNums[len(numbers) - 1]
+                    ## need to delete this ROI from the list sortedNums[len(numbers) - 2]
+                    #toDeleteFrom = sortedNums[len(numbers) - 2]
+                    #listOfROIsInMask[toDeleteFrom].delete()
+                    
+                    ## or create a tuple : (column-ROI, mask-ROI)                    
+                    
+                #else:
+                    #print 'need to split it'
+                
+                
+                
+                
             
         
     #else :   TODO!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -230,6 +254,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
     res.append(listOfSeparateCoords)
     res.append(listOfSeparateValues)
     res.append(listOfROIsInMask)
+    res.append(listOfSizes)
     return(res)       
     
 
@@ -261,13 +286,13 @@ if __name__ == '__main__':
     
     if options.directory is None:
         print >> sys.stderr, 'New: exit. no directory given'
-        sys.exit(1)
+        sys.exit(0)
     else:
         directory = options.directory           
 
     if options.realPatientID is None:
         print >> sys.stderr, 'New: exit. no patient ID given'
-        sys.exit(1)
+        sys.exit(0)
     else:
         realPatientID = options.realPatientID     
 
@@ -275,7 +300,7 @@ if __name__ == '__main__':
         realSide = options.realSide
         
     if options.columnDiameter is not None:
-        columnDiameter = options.columnDiameter
+        columnDiameter = int(options.columnDiameter)
         
     if options.ignoreCommunColums is not None:
         ignoreCommunColums = options.ignoreCommunColums
@@ -289,6 +314,9 @@ if __name__ == '__main__':
     pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
     pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
     
+    print 'volsCoord = ' , pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
+    print 'volsMask = ', pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide)
+    
     volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
     volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
     volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
@@ -298,6 +326,9 @@ if __name__ == '__main__':
     if len(volsCoord) != 1 or len(volsMask) != 1:
         # abort the calculation, as too many or not a single texture file was found
         print 'abort the calculation, as too many or not a single volsCoord and volsMask file was found'
+        ss = directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide)        
+        print 'f = ', ss
+
         f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
         f.write('abort the calculation, as ' + str(len(volsCoord)) + ' volsCoord and ' + str(len(volsMask)) + ' volsMask files were found' + '\n')
         f.close()
@@ -315,31 +346,41 @@ if __name__ == '__main__':
         # repeat for the NEW nobias images!
         result2 = extractProfiles(volCoord, volValue2, volMask)
     else:   # we work with columns! then calculate the required size. 
-        columnDiameter = options.columnDiameter
+        columnDiameter = int(options.columnDiameter)
+        print '******************* columns diameter was given = ', str(columnDiameter) , ' extract profiles in the columns ***************************'
         # human cortical thickness 2 - 4mm
-        voxelSizeMax = np.max(volValue.header()['voxel_size'][0:3])
-        voxelSizeMin = np.min(volValue.header()['voxel_size'][0:3])
+        vs = volValue.header()['voxel_size'][0:3]
+        voxelSizeMax = np.max(vs)
+        voxelSizeMin = np.min(vs)
+        voxelSizeAvg = np.average(vs)
         heightMax = int(np.round(4.0 / voxelSizeMin))
         heightMin = int(np.round(2.0 / voxelSizeMax))
         print 'heights of the cortical columns found heightMin = ', heightMin, ' heightMax = ', heightMax
         #heights = range(heightMin, heightMax + 1)
         # just for test: to see the influence of really large columns
         heights = range(heightMin, heightMax + 8)
+        print ' ##################################################### heights = ', heights
        # using this info: calculate minimal cortical column sizes
         
         # average size         
-        minColumnSize = int(np.round(int(columnDiameter) * int(columnDiameter) / 4 * np.pi * np.average(heights))) 
-        print 'calculated the minColumnSize = ', minColumnSize
+        minColumnSize = int(np.round(columnDiameter * columnDiameter / voxelSizeAvg / voxelSizeAvg / 4 * np.pi * np.average(heights))) 
+        print '##################################################### calculated the avgColumnSize = ', minColumnSize
 
         # a list of sizes        
-        minColumnSizes = [int(k * int(columnDiameter) * int(columnDiameter) / 4 * np.pi) for k in heights]
+        minColumnSizes = [int(k * columnDiameter * columnDiameter / voxelSizeAvg / voxelSizeAvg / 4 * np.pi) for k in heights]
         print 'calculated a range of possible column sizes: '
         print minColumnSizes
         
         # start the processing for columns
         print '******************* columns diameter was given, then extract profiles in the columns ***************************'    
         # read in the columns file
-        volsColumns = glob.glob(directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/' %(realPatientID) + 'merged_randomized_%s_%s_cut_noSulci_extended_diam%s.nii.gz' %(realPatientID, realSide, str(columnDiameter)))
+        volName = ''
+        if columnDiameter == 1:
+            volName = directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/' %(realPatientID) + 'merged_randomized_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
+        else:
+            volName = directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/' %(realPatientID) + 'merged_randomized_%s_%s_cut_noSulci_extended_diam%s.nii.gz' %(realPatientID, realSide, str(columnDiameter))
+            
+        volsColumns = glob.glob(volName)
 
         if len(volsColumns) != 1:# abort the calculation, as too many or not a single columns file was found
             print 'abort the calculation, as too many or not a single volsColumns file was found'
@@ -380,7 +421,7 @@ if __name__ == '__main__':
     #plt.close()
     
     plt.plot(coordinates2, intensities2, '.', c = 'r')
-    plt.title('Profile in ROI')   # subplot 211 title
+    plt.title('Profile in all ROIs')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
     plt.savefig(directory + '%s_%s_newNobiasT2ROIs.png' %(realPatientID, realSide))    
@@ -406,39 +447,50 @@ if __name__ == '__main__':
     
     addedColumnsDiamName = ''
     pathForFiles = directory
+    print '############################################ columnDiameter = ', str(columnDiameter)
     if columnDiameter is not None:
         addedColumnsDiamName = '_diam%s' %(columnDiameter)
         # if the result was for the columns, create a separate folder for it
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)
         if not os.path.exists(pathForFiles):
             os.makedirs(pathForFiles)
-    
+        print '############################################ created directory = ', pathForFiles
+
         # read in the results for columns IDs in various regions
         iDsInMaskROIs = result2[5]
+     
+    # write out a file with all columns and their sizes
+    dataS = open(pathForFiles + '%s_%s_ColumnSizes%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
+    dataS.write('\tColumnID\tSize\n')
+    sizeSorted = pathForFiles + 'sortedBySize/'
+    if not os.path.exists(sizeSorted):
+        os.makedirs(sizeSorted)
         
     for i in range(len(iDs)):
         #print 'i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
         plt.plot(currCoords, currValues, '.', c = 'b')
-        plt.title('Profile in ROI')   # subplot 211 title
+        plt.title('Profile in ROI %s' %(str(iDs[i])))   # subplot 211 title
         plt.xlabel('Cortical depth')
         plt.ylabel('T2-nobias intensity')
-        plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')
         
-        # write out the same info, but sorted by sizes
-        sizeSorted = pathForFiles + 'sortedBySize/'
-        if not os.path.exists(sizeSorted):
-            os.makedirs(sizeSorted)
-        plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
-        plt.clf()
-        plt.close()
+        dataS.write('\t%s\t%s\n' %(str(iDs[i]), len(currCoords)))
 
-        data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
-        data2i.write(headerLine + '\n')
-        for j in range(len(currCoords)):
-            data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
-        data2i.close()                
+        # do not plot if it is zero
+        if len(currCoords) != 0:
+            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
+            # write out the same info, but sorted by sizes
+            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+            data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
+            data2i.write(headerLine + '\n')
+            for j in range(len(currCoords)):
+                data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
+            data2i.close()  
+            
+        plt.clf()
+        plt.close()        
+    dataS.close()             
             
     # plot the ROIs from the mask (columns of any size) on one plot
     roiNames = ''
@@ -446,13 +498,18 @@ if __name__ == '__main__':
         roiNames += '_' + str(iDs[i])
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
-        plt.plot(currCoords, currValues, '.')
-        plt.title('Profile in mask ROIs')   
-        plt.xlabel('Cortical depth')
-        plt.ylabel('T2-nobias intensity')
+        plt.plot(currCoords, currValues, '.', label = 'ROI ' + str(iDs[i]))
+        
+    plt.title('Profile in mask ROIs')   
+    plt.xlabel('Cortical depth')
+    plt.ylabel('T2-nobias intensity')
         
     if columnDiameter is not None:
-        roiNames = '_allColumns'    
+        roiNames = '_allColumns' 
+    else:
+        # plot a legend only for the case without columns. otherwise - too many regions
+        plt.legend(loc='upper right', numpoints = 1)
+        
     plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROIs%s' %(realPatientID, realSide, addedColumnsDiamName, roiNames) + '.png')
     plt.clf()
     plt.close() 
@@ -460,6 +517,26 @@ if __name__ == '__main__':
                 
     # get results for various sizes of columns
     if columnDiameter is not None:
+        # plot the histogram of column sizes
+        sizes = result2[6]
+        plt.hist(sizes, bins = 50)
+        plt.title('Histogram of columns sizes for diameter %s ' %(columnDiameter))   # subplot 211 title
+        plt.xlabel('Cortical columns sizes')
+        plt.ylabel('Percentage')
+        plt.savefig(directory + '%s_%s_histOfColumnSizes_diam%s.png' %(realPatientID, realSide, str(columnDiameter)))    
+        plt.clf()
+        plt.close()
+        
+        # plot the "theoretical" histogram of column heights
+        theorHeights = [ int (w * 4 * voxelSizeAvg * voxelSizeAvg / np.pi / columnDiameter / columnDiameter) for w in sizes]
+        plt.hist(theorHeights, bins = 50)
+        plt.title('Histogram of theoretical heights of columns for diameter %s ' %(columnDiameter))   # subplot 211 title
+        plt.xlabel('Theoretical heights of columns')
+        plt.ylabel('Percentage')
+        plt.savefig(directory + '%s_%s_histOfTheorHeights_diam%s.png' %(realPatientID, realSide, str(columnDiameter)))    
+        plt.clf()
+        plt.close()
+        
         listsOfCoordsForLargeColumns = [[] for x in range(len(heights))]
         listsOfValuesForLargeColumns = [[] for x in range(len(heights))] 
         listsOfIDsForLargeColumns = [[] for x in range(len(heights))] 
@@ -482,13 +559,15 @@ if __name__ == '__main__':
         # now we have info for each min column size. plot it
         for j in range(len(minColumnSizes)):
             print 'number of columns over ', minColumnSizes[j], ' is ', listsOfNumbersLargeColumns[j], ' from ', len(iDs), ' from ', len(np.unique(np.asarray(volColumns)))
-            plt.plot(listsOfCoordsForLargeColumns[j], listsOfValuesForLargeColumns[j], '.', c = 'r')
-            plt.title('Profile in cortical columns larger %s' %(minColumnSizes[j]))   # subplot 211 title
-            plt.xlabel('Cortical depth')
-            plt.ylabel('T2-nobias intensity')
-            plt.savefig(directory + '%s_%s_newNobiasT2_diam%s_over%s.png' %(realPatientID, realSide, str(columnDiameter), minColumnSizes[j]))    
-            plt.clf()
-            plt.close()
+            # if no such columns were found - do NOT plot!!!
+            if len(listsOfCoordsForLargeColumns[j]) != 0:                
+                plt.plot(listsOfCoordsForLargeColumns[j], listsOfValuesForLargeColumns[j], '.', c = 'r')
+                plt.title('Profile in cortical columns larger %s' %(minColumnSizes[j]))   # subplot 211 title
+                plt.xlabel('Cortical depth')
+                plt.ylabel('T2-nobias intensity')
+                plt.savefig(directory + '%s_%s_newNobiasT2_diam%s_over%s.png' %(realPatientID, realSide, str(columnDiameter), minColumnSizes[j]))    
+                plt.clf()
+                plt.close()
             
             # plot the data from all cortical columns and from the large ones together
             plt.plot(coordinates2, intensities2, '.', c = 'b')
@@ -496,6 +575,7 @@ if __name__ == '__main__':
             plt.xlabel('Cortical depth')
             plt.ylabel('T2-nobias intensity')
             plt.plot(listsOfCoordsForLargeColumns[j], listsOfValuesForLargeColumns[j], '.', c = 'r')
+            # TODO!!! this plot is not plotted!! ???
             plt.clf()
             plt.close()    
             
@@ -503,7 +583,11 @@ if __name__ == '__main__':
             dataID = open(pathForFiles + '%s_%s_IDs%s_over_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(minColumnSizes[j])), "w")
             string = ''
             for l in listsOfIDsForLargeColumns[j]:
-                string += str(l) + '\t'                
+                string += str(l) + '\t' 
+                
+            if len(listsOfIDsForLargeColumns[j]) == 0:  # print 0
+                string += '0\t'
+            
             dataID.write(string)
             dataID.close()
             
@@ -560,7 +644,7 @@ if __name__ == '__main__':
 
             for j in range(len(maskROIids)):
                 roiNames += '_' + str(maskROIids[j])
-                plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.')
+                plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', label = 'ROI '+ str(maskROIids[j]))
                 #plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', c = 'b') 
                 #plt.title('Profile in Mask ROI of large cortical columns')   
                 #plt.xlabel('Cortical depth')
@@ -577,8 +661,11 @@ if __name__ == '__main__':
             else:
                 #print 'Commun columns are INCLUDED'
                 nameInclExcl = 'inclCommun'
-                
-            plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl))
+            # do not save the picture if it is empty
+            if len(listsOfCoordsForMaskVariousThr[j][t]) != 0:
+                plt.legend(loc='upper right', numpoints = 1)
+                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl))
+            
             plt.clf()
             plt.close()
 
