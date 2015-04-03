@@ -207,8 +207,6 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
         for i in range(len(roiIds)):
             if roiIds[i] != 0 and roiIds[i] in listOfROIsInMask[0] and roiIds[i] in listOfROIsInMask[1]:
                 #print 'Column with ID ', roiIds[i], ' is in both regions'
-                listOfROIsInMask[len(roisMask)].extend([roiIds[i]])               # a list of ROIs to ignore
-                
                 # check what percentage of this column is in each mask ROI
                 numbers = []
                 for k in roisMask:                
@@ -218,26 +216,31 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
                 
                 ## TODO! analyze these numbers
                 # TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
-                ## compare the max. to the second largest number. e.g. If the max is > 4 times than the second max : use it for the respective ROI. else: split.
-                #sortedNums = sorted(range(len(numbers)), key=lambda k: numbers[k])
-                #maxPart = numbers[sortedNums[len(numbers) - 1]]
-                #max2Part = numbers[sortedNums[len(numbers) - 2]]
-                #ratio = maxPart/max2Part
-                #print 'ratio = ', ratio
+                # if one of the rois contains 10 times more voxels than all the rest ROIs, than we can accept this column and say that it belongs to this roi
+                # e.g. if column has 1200 voxels in ROI 11 and 13 voxels in ROI 21  - should it be dismissed??
                 
-                ## e.g. the max is > 4 times than the second max : use it for the respective ROI. else: split.
-                #if ratio > 5.0:
-                    #print 'this column will belong to ROI # ', sortedNums[len(numbers) - 1]
-                    ## need to delete this ROI from the list sortedNums[len(numbers) - 2]
-                    #toDeleteFrom = sortedNums[len(numbers) - 2]
-                    #listOfROIsInMask[toDeleteFrom].delete()
+                maxN = np.max(numbers)
+                ratio = maxN / (np.sum(numbers) - maxN)
+                if ratio >= 10:
+                    # accept this column to the ROI: where its most voxels are
+                    maxId = numbers.index(maxN) # maxId gives the ROI in the mask to which this column should be attributed
+                    print 'ratio = ', ratio, '  maxId = ', maxId, ' mask ROI ', roisMask[maxId]
                     
-                    ## or create a tuple : (column-ROI, mask-ROI)                    
-                    
-                #else:
-                    #print 'need to split it'
-                
-                
+                    # do not put onto ignore list!
+                    # TODO! need to delete this column id from the lists of other mask ROIs
+                    for k in range(len(roisMask)):
+                        if roisMask[k] != roisMask[maxId]:
+                            print 'delete the column number ', roiIds[i], ' from mask ROI ', roisMask[k]
+                            print 'exclude from ', listOfROIsInMask[k]
+                            listOfROIsInMask[k] = np.delete(listOfROIsInMask[k], list(listOfROIsInMask[k]).index(roiIds[i]))   
+                            print 'new list is ', listOfROIsInMask[k]
+                else:
+                    # put it into ignore list
+                    listOfROIsInMask[len(roisMask)].extend([roiIds[i]])               # a list of ROIs to ignore
+                    print 'ignore the column number ', roiIds[i]     
+                    # need to delete these columns from all other lists????
+        
+        print 'final ignore list = ', listOfROIsInMask[len(roisMask)]
                 
                 
             
@@ -458,10 +461,19 @@ if __name__ == '__main__':
 
         # read in the results for columns IDs in various regions
         iDsInMaskROIs = result2[5]
-     
-    # write out a file with all columns and their sizes
-    dataS = open(pathForFiles + '%s_%s_ColumnSizes%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
-    dataS.write('\tColumnID\tSize\n')
+        
+    # write out a file with the info: Column ID, size, maskROI (belongs to it or not), To be ignored
+    maskArray = np.asarray(volMask)
+    maskROIids = np.unique(maskArray[np.where(maskArray > 0)])            
+    dataS = open(pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
+    headerInfo = '\tColumnID\tSize\t'
+    
+    # complete the header with the mask ROI info
+    for i in range(len(maskROIids)):
+            headerInfo += 'MaskROI_' + str(maskROIids[i]) + '\t'
+    
+    headerInfo += 'ToIgnore\n'    
+    dataS.write(headerInfo)    
     sizeSorted = pathForFiles + 'sortedBySize/'
     if not os.path.exists(sizeSorted):
         os.makedirs(sizeSorted)
@@ -475,8 +487,26 @@ if __name__ == '__main__':
         plt.xlabel('Cortical depth')
         plt.ylabel('T2-nobias intensity')
         
-        dataS.write('\t%s\t%s\n' %(str(iDs[i]), len(currCoords)))
+        currLine = '\t%s\t%s\t' %(str(iDs[i]), len(currCoords))
+        # add info on Mask ROIs
+        for j in range(len(maskROIids)):
+            #print 'j = ', j, 'iDsInMaskROIs[j] = ', iDsInMaskROIs[j]
+            if iDs[i] in iDsInMaskROIs[j]:
+                currLine += '1\t'
+                #print iDs[i], ' is in the list'
+            else:
+                currLine += '0\t'
+                #print iDs[i], ' is NOT in the list'
 
+        # check if this element is in a list to be ignored
+        #print 'a list to be ignored: ', iDsInMaskROIs[j + 1]
+        if iDs[i] in iDsInMaskROIs[j + 1]:
+            currLine += '1\n'
+            #print 'ignore ', i
+        else:
+            currLine += '0\n'        
+        dataS.write(currLine)
+       
         # do not plot if it is zero
         if len(currCoords) != 0:
             plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
@@ -580,16 +610,13 @@ if __name__ == '__main__':
             plt.close()    
             
             # write out a file with IDs of columns that are larger than this threshold
-            dataID = open(pathForFiles + '%s_%s_IDs%s_over_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(minColumnSizes[j])), "w")
-            string = ''
-            for l in listsOfIDsForLargeColumns[j]:
-                string += str(l) + '\t' 
-                
-            if len(listsOfIDsForLargeColumns[j]) == 0:  # print 0
-                string += '0\t'
-            
-            dataID.write(string)
-            dataID.close()
+            if len(listsOfIDsForLargeColumns[j]) != 0:
+                dataID = open(pathForFiles + '%s_%s_IDs%s_over_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(minColumnSizes[j])), "w")
+                string = ''
+                for l in listsOfIDsForLargeColumns[j]:
+                    string += str(l) + '\t'             
+                dataID.write(string)
+                dataID.close()
             
         # now plot avg profiles for various mask regions
         listOfIDsToIgnore = iDsInMaskROIs[len(iDsInMaskROIs) - 1]
