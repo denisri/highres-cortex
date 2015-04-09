@@ -182,6 +182,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
         
         for i in roiIds:
             # print len(arrCoord), len(roiColumns)
+            # TODO! check if this is OK: I take the whole column even if only 1 voxel is inside the voronoiCorr. Cut it?
             arrCoord1i = arrCoord1[roiColumns == i]
             arrValue1i = arrValue1[roiColumns == i]           
             coordsi = arrCoord1i[arrCoord1i != 0]
@@ -205,43 +206,51 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
         # check which columns are in both ROIs
         # TODO!! decide what to do with these ROIs?? NOW - ignore them - 
         for i in range(len(roiIds)):
-            if roiIds[i] != 0 and roiIds[i] in listOfROIsInMask[0] and roiIds[i] in listOfROIsInMask[1]:
-                #print 'Column with ID ', roiIds[i], ' is in both regions'
-                # check what percentage of this column is in each mask ROI
-                numbers = []
-                for k in roisMask:                
-                    w = arrColumns[(arrColumns == roiIds[i]) & (mask == k)] # get voxels in the respective mask ROI and the respective cortical column
-                    numbers.append(len(w))                
-                print 'Column with ID ', roiIds[i], ' is in both regions. % in mask ROIs ', ' is ', numbers
+            # TODO! change it! need to ignore a column if it is present in any 2 mask ROIs, not necessarily 1st and 2nd
+            if roiIds[i] != 0:                  #and roiIds[i] in listOfROIsInMask[0] and roiIds[i] in listOfROIsInMask[1]:
+                includedIn = [int(roiIds[i] in listOfROIsInMask[w]) for w in range(len(listOfROIsInMask) - 1)]
+                #print 'current ROI ', roiIds[i], ' is included in the following MASK rois ', includedIn
                 
-                ## TODO! analyze these numbers
-                # TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
-                # if one of the rois contains 10 times more voxels than all the rest ROIs, than we can accept this column and say that it belongs to this roi
-                # e.g. if column has 1200 voxels in ROI 11 and 13 voxels in ROI 21  - should it be dismissed??
-                
-                maxN = np.max(numbers)
-                ratio = maxN / (np.sum(numbers) - maxN)
-                if ratio >= 10:
-                    # accept this column to the ROI: where its most voxels are
-                    maxId = numbers.index(maxN) # maxId gives the ROI in the mask to which this column should be attributed
-                    print 'ratio = ', ratio, '  maxId = ', maxId, ' mask ROI ', roisMask[maxId]
+                if np.sum(includedIn) > 1:
+                    print 'this ROI ', roiIds[i], ' is included in ', includedIn                
+                    #print 'Column with ID ', roiIds[i], ' is in both regions'
+                    # check what percentage of this column is in each mask ROI
+                    numbers = []
+                    for k in roisMask:                
+                        w = arrColumns[(arrColumns == roiIds[i]) & (mask == k)] # get voxels in the respective mask ROI and the respective cortical column
+                        numbers.append(len(w))                
+                    print 'Column with ID ', roiIds[i], ' is in both regions. % in mask ROIs ', ' is ', numbers
                     
-                    # do not put onto ignore list!
-                    # TODO! need to delete this column id from the lists of other mask ROIs
-                    for k in range(len(roisMask)):
-                        if roisMask[k] != roisMask[maxId]:
-                            print 'delete the column number ', roiIds[i], ' from mask ROI ', roisMask[k]
-                            print 'exclude from ', listOfROIsInMask[k]
-                            listOfROIsInMask[k] = np.delete(listOfROIsInMask[k], list(listOfROIsInMask[k]).index(roiIds[i]))   
-                            print 'new list is ', listOfROIsInMask[k]
-                else:
-                    # put it into ignore list
-                    listOfROIsInMask[len(roisMask)].extend([roiIds[i]])               # a list of ROIs to ignore
-                    print 'ignore the column number ', roiIds[i]     
-                    # need to delete these columns from all other lists????
-        
-        print 'final ignore list = ', listOfROIsInMask[len(roisMask)]
-                
+                    ## TODO! analyze these numbers
+                    # TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
+                    # if one of the rois contains 10 times more voxels than all the rest ROIs, than we can accept this column and say that it belongs to this roi
+                    # e.g. if column has 1200 voxels in ROI 11 and 13 voxels in ROI 21  - should it be dismissed??
+                    
+                    maxN = np.max(numbers)
+                    ratio = maxN / (np.sum(numbers) - maxN)
+                    if ratio >= 10:
+                        # accept this column to the ROI: where its most voxels are
+                        maxId = numbers.index(maxN) # maxId gives the ROI in the mask to which this column should be attributed
+                        print 'ratio = ', ratio, '  maxId = ', maxId, ' mask ROI ', roisMask[maxId]
+                        
+                        # do not put onto ignore list!
+                        # TODO! need to delete this column id from the lists of other mask ROIs
+                        for k in range(len(roisMask)):
+                            if roisMask[k] != roisMask[maxId]:
+                                # for the case if there are 3 or more regions: need to check whether to delete from the third region
+                                if roiIds[i] in listOfROIsInMask[k]:
+                                    print 'delete the column number ', roiIds[i], ' from mask ROI ', roisMask[k]
+                                    #print 'exclude from ', listOfROIsInMask[k]
+                                    listOfROIsInMask[k] = np.delete(listOfROIsInMask[k], list(listOfROIsInMask[k]).index(roiIds[i]))   
+                                    #print 'new list is ', listOfROIsInMask[k]
+                    else:
+                        # put it into ignore list
+                        listOfROIsInMask[len(roisMask)].extend([roiIds[i]])               # a list of ROIs to ignore
+                        print 'ignore the column number ', roiIds[i]     
+                        # need to delete these columns from all other lists????
+                #else:
+                    #print 'Column with ID ', roiIds[i], ' is in one region - maskROI ', includedIn
+        print 'final ignore list = ', listOfROIsInMask[len(roisMask)]                
                 
             
         
@@ -361,7 +370,7 @@ if __name__ == '__main__':
         print 'heights of the cortical columns found heightMin = ', heightMin, ' heightMax = ', heightMax
         #heights = range(heightMin, heightMax + 1)
         # just for test: to see the influence of really large columns
-        heights = range(heightMin, heightMax + 8)
+        heights = range(heightMin, heightMax + 5)
         print ' ##################################################### heights = ', heights
        # using this info: calculate minimal cortical column sizes
         
@@ -466,13 +475,16 @@ if __name__ == '__main__':
     maskArray = np.asarray(volMask)
     maskROIids = np.unique(maskArray[np.where(maskArray > 0)])            
     dataS = open(pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
-    headerInfo = '\tColumnID\tSize\t'
+    headerInfo = '\tColumnID\tSize'
     
-    # complete the header with the mask ROI info
-    for i in range(len(maskROIids)):
-            headerInfo += 'MaskROI_' + str(maskROIids[i]) + '\t'
-    
-    headerInfo += 'ToIgnore\n'    
+    # complete the header with the mask ROI info. If columnDiameter was given
+    if columnDiameter is not None:        
+        for i in range(len(maskROIids)):
+                headerInfo += '\tMaskROI_' + str(maskROIids[i]) + '\t'    
+        headerInfo += 'ToIgnore\n'    
+    else:
+        headerInfo += '\n'    
+        
     dataS.write(headerInfo)    
     sizeSorted = pathForFiles + 'sortedBySize/'
     if not os.path.exists(sizeSorted):
@@ -487,24 +499,27 @@ if __name__ == '__main__':
         plt.xlabel('Cortical depth')
         plt.ylabel('T2-nobias intensity')
         
-        currLine = '\t%s\t%s\t' %(str(iDs[i]), len(currCoords))
-        # add info on Mask ROIs
-        for j in range(len(maskROIids)):
-            #print 'j = ', j, 'iDsInMaskROIs[j] = ', iDsInMaskROIs[j]
-            if iDs[i] in iDsInMaskROIs[j]:
-                currLine += '1\t'
-                #print iDs[i], ' is in the list'
+        currLine = '\t%s\t%s' %(str(iDs[i]), len(currCoords))
+        # add info on Mask ROIs. if diameter was given
+        if columnDiameter is not None:
+            for j in range(len(maskROIids)):
+                #print 'j = ', j, 'iDsInMaskROIs[j] = ', iDsInMaskROIs[j]
+                if iDs[i] in iDsInMaskROIs[j]:
+                    currLine += '\t1'
+                    #print iDs[i], ' is in the list'
+                else:
+                    currLine += '\t0'
+                    #print iDs[i], ' is NOT in the list'                    
+                    
+            # check if this element is in a list to be ignored
+            #print 'a list to be ignored: ', iDsInMaskROIs[j + 1]
+            if iDs[i] in iDsInMaskROIs[j + 1]:
+                currLine += '\t1'
+                #print 'ignore ', i
             else:
-                currLine += '0\t'
-                #print iDs[i], ' is NOT in the list'
-
-        # check if this element is in a list to be ignored
-        #print 'a list to be ignored: ', iDsInMaskROIs[j + 1]
-        if iDs[i] in iDsInMaskROIs[j + 1]:
-            currLine += '1\n'
-            #print 'ignore ', i
-        else:
-            currLine += '0\n'        
+                currLine += '\t0'  
+                
+        currLine += '\n'
         dataS.write(currLine)
        
         # do not plot if it is zero
@@ -626,7 +641,7 @@ if __name__ == '__main__':
         # lists of ROIs of various sizes
         listsOfCoordsForMaskVariousThr = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
         listsOfValuesForMaskVariousThr = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)] 
-
+        listsOfColumnIDsForMaskVariousThr = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
         
         maskArray = np.asarray(volMask)
         maskROIids = np.unique(maskArray[np.where(maskArray > 0)])
@@ -645,8 +660,7 @@ if __name__ == '__main__':
 
                 if criterion:     
                     # get the ID of this column in the original data
-                    #print 'iDs ='
-                    #print iDs
+                    #print 'iDs =', iDs
                     #print 'k = ', k
                     indexOfThisID = np.where(iDs == k)[0][0]
                     #print 'indexOfThisID ', indexOfThisID
@@ -657,29 +671,64 @@ if __name__ == '__main__':
                         #print t, j
                         if len(currCoords) > minColumnSizes[t]:
                             listsOfCoordsForMaskVariousThr[j][t].extend(currCoords)
-                            listsOfValuesForMaskVariousThr[j][t].extend(currValues)   
-                            
+                            listsOfValuesForMaskVariousThr[j][t].extend(currValues)  
+                            # create a list of length len(currCoords), full of the respective columnID (k)
+                            repeatedID = [k] * len(currValues)                            
+                            listsOfColumnIDsForMaskVariousThr[j][t].extend(repeatedID) 
                             
                             
         # plot the data for mask rois of large columns (various size thresholds). For ROIs separately, and together
-        for t in range(len(minColumnSizes)):
-            plt.plot()
-            plt.title('Profile in Mask ROIs of large cortical columns')   
-            plt.xlabel('Cortical depth')
-            plt.ylabel('T2-nobias intensity')
+        colours = ['b', 'g', 'r', 'c', 'm', 'y', 'b']        
+        for t in range(len(minColumnSizes)):            
+            numOfRegions = len(maskROIids) + 1  # mask rois and one plot with all together   
+            fig = plt.figure(figsize=(numOfRegions * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+            # and now plot the same to the last plot: all mask ROIs together
+            axAll = fig.add_subplot(1,numOfRegions,numOfRegions)
+            #plt.plot()
+            #plt.title('Profile in Mask ROIs of large cortical columns')   
+            #plt.xlabel('Cortical depth')
+            #plt.ylabel('T2-nobias intensity')
             roiNames = ''
+            #print '-------------------------------------------------------- plot for minColumnSizes = ', minColumnSizes[t]
+            numP = 0    # total number of points plotted
 
             for j in range(len(maskROIids)):
                 roiNames += '_' + str(maskROIids[j])
-                plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', label = 'ROI '+ str(maskROIids[j]))
-                #plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', c = 'b') 
-                #plt.title('Profile in Mask ROI of large cortical columns')   
-                #plt.xlabel('Cortical depth')
-                #plt.ylabel('T2-nobias intensity')
-                #plt.savefig(directory + '%s_%s_nobiasT2_ROI_' %(realPatientID, realSide) + str(maskROIids[j]) + '%s_over%s.png' %(addedColumnsDiamName, minColumnSizes[t]))
-                #plt.clf()
-                #plt.close()
+                #plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', label = 'ROI '+ str(maskROIids[j]))                
+                ax1 = fig.add_subplot(1,numOfRegions,j + 1)
+                ax1.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', c = colours[j], label = 'ROI '+ str(maskROIids[j]))
+                #plt.title('Profile in maskROI %s' %(maskROIids[j]))   # subplot 211 title
+                ax1.set_title('Profile in maskROI %s' %(maskROIids[j]))
+                ax1.set_xlabel('Cortical depth') 
+                ax1.set_ylabel('T2-nobias intensity')                 
+                ax1.legend(loc='upper right', numpoints = 1)               
+                
+                # and now plot the same to the last plot: all mask ROIs together
+                axAll.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', label = 'ROI '+ str(maskROIids[j]))
+                #print '----------------------------------------------------- len(listsOfCoordsForMaskVariousThr[',j,'][',t,']) = ', len(listsOfCoordsForMaskVariousThr[j][t])
+                numP += len(listsOfCoordsForMaskVariousThr[j][t])
+                
+                # write out a file with columnID, coord, value (corresponding to this mask ROI and size threshold)
+                if len(listsOfCoordsForMaskVariousThr[j][t]) != len(listsOfColumnIDsForMaskVariousThr[j][t]):
+                    print ' --------------------------- PROBLEM !'
+                else:
+                    # write out profiles if diameter is > 1
+                    if columnDiameter > 1 and len(listsOfCoordsForMaskVariousThr[j][t]) > 0:                        
+                        f = open(pathForFiles + '%s_%s_MaskROI%s_profiles%s_over_%s.txt' %(realPatientID, realSide, str(maskROIids[j]), addedColumnsDiamName, str(minColumnSizes[t])), "w")
+                        print 'write out a file %s_%s_MaskROI%s_profiles%s_over_%s.txt' %(realPatientID, realSide, str(maskROIids[j]), addedColumnsDiamName, str(minColumnSizes[t])), ' number of elements ', len(listsOfCoordsForMaskVariousThr[j][t])
+                        s = 'ColumnID\tCoord\tValue\n'
+                        f.write(s)
+                        for z in range(len(listsOfCoordsForMaskVariousThr[j][t])):
+                            s = str(listsOfColumnIDsForMaskVariousThr[j][t][z]) + '\t' + str(listsOfCoordsForMaskVariousThr[j][t][z]) + '\t' + str(listsOfValuesForMaskVariousThr[j][t][z]) + '\n'                   
+                            f.write(s)        
+                        f.close()
+                        
             
+            axAll.set_title('Profile in all maskROIs')
+            axAll.set_xlabel('Cortical depth') 
+            axAll.set_ylabel('T2-nobias intensity') 
+            axAll.legend(loc='upper right', numpoints = 1)            
+                            
             # modify the name if cortical columns communfor ROIs were included/excluded
             nameInclExcl = ''
             if ignoreCommunColums:
@@ -689,35 +738,10 @@ if __name__ == '__main__':
                 #print 'Commun columns are INCLUDED'
                 nameInclExcl = 'inclCommun'
             # do not save the picture if it is empty
-            if len(listsOfCoordsForMaskVariousThr[j][t]) != 0:
-                plt.legend(loc='upper right', numpoints = 1)
-                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl))
-            
+            if numP != 0:
+                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl), bbox_inches='tight')            
             plt.clf()
-            plt.close()
-
-    
-                
-    #if columnDiameter is not None:
-        #plt.plot(coordsFromLargeColumns, valuesFromLargeColumns, '.', c = 'r')
-        #plt.title('Profile in large cortical columns')   # subplot 211 title
-        #plt.xlabel('Cortical depth')
-        #plt.ylabel('T2-nobias intensity')
-        #plt.savefig(directory + '%s_%s_newNobiasT2_ColumnsOver%s.png' %(realPatientID, realSide, minColumnSize))    
-        #plt.clf()
-        #plt.close()
-        
-        ## plot the data from all cortical columns and from the large ones together
-        #plt.plot(coordinates2, intensities2, '.', c = 'b')
-        #plt.title('Profile in ROI')   # subplot 211 title
-        #plt.xlabel('Cortical depth')
-        #plt.ylabel('T2-nobias intensity')
-        #plt.plot(coordsFromLargeColumns, valuesFromLargeColumns, '.', c = 'r')
-        #plt.savefig(directory + '%s_%s_newNobiasT2_AllvsColumnsOver%s.png' %(realPatientID, realSide, minColumnSize)) 
-        #plt.clf()
-        #plt.close()    
-        #print 'number of large columns is ', len(iDsLarge), ' from ', len(iDs), ' from ', len(np.unique(np.asarray(volColumns)))
-    
+            plt.close()    
         
     
     

@@ -60,9 +60,11 @@ if __name__ == '__main__':
     realPatientID = None
     directory = None
     #realSide = 'L'
+    columnDiameter = None
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
+    parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
     #parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
     options, args = parser.parse_args(sys.argv)
@@ -80,6 +82,9 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
         realPatientID = options.realPatientID     
+        
+    if options.columnDiameter is not None:
+        columnDiameter = int(options.columnDiameter)
 
     pathToProfL = directory + '%s_L_profiles2.txt' %(realPatientID)
     pathToProfR = directory + '%s_R_profiles2.txt' %(realPatientID)
@@ -126,66 +131,116 @@ if __name__ == '__main__':
     profROIsL = glob.glob(pathToROIsProfL)
     profROIsR = glob.glob(pathToROIsProfR)
     
-    #print 'profROIsL'
-    #print profROIsL
+    print 'profROIsL'
+    print profROIsL
+    print 'profROIsR'
+    print profROIsR
+    numOfCommonRLregions = 0
     
     for i in range(len(profROIsL)):
-        # read in the respective files
-        numbROIsL, coordROIsL, valueROIsL = np.loadtxt(profROIsL[i], skiprows = 1, unpack = True)
-        numbROIsR, coordROIsR, valueROIsR = np.loadtxt(profROIsR[i], skiprows = 1, unpack = True)
-        
-        # get the ROI ID
-        iD = profROIsL[i].split('_L_profiles2_ROI_')[1]
-        iD = iD.split('.txt')[0]
-
-        # plot the data
-        plt.plot(coordROIsL, valueROIsL, '.', c = 'b', label = 'L')
-        plt.title('Profile in ROI %s ' %(iD))   # subplot 211 title
-        plt.xlabel('Cortical depth')
-        plt.ylabel('T2-nobias intensity')
-        plt.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
-        plt.legend(loc='upper right', numpoints = 1)
-        plt.savefig(directory + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))   
-        
-        # TODO: delete later if no need: save profiles also to the outer folder!
-        #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))    
-        plt.clf()
-        plt.close() 
-      
+        # check if this L profile is from the same mask ROI as the right one:
+        # check if the corresponding R - file exists
+        profROIsRcorrespond = glob.glob(profROIsL[i].replace('_L_', '_R_'))
+        if len(profROIsRcorrespond) == 1:      
+            numOfCommonRLregions += 1
+            print 'corresponding files ', profROIsL[i], ' and ', profROIsRcorrespond[0]
+            # read in the respective files
+            numbROIsL, coordROIsL, valueROIsL = np.loadtxt(profROIsL[i], skiprows = 1, unpack = True)
+            numbROIsR, coordROIsR, valueROIsR = np.loadtxt(profROIsRcorrespond[0], skiprows = 1, unpack = True)
+            
+            # get the ROI ID
+            iD = (profROIsL[i].split('_L_profiles2_ROI_')[1]).split('.txt')[0] # '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ml140175/ml140175_R_profiles2_ROI_11.txt'
+            # plot the data
+            plt.plot(coordROIsL, valueROIsL, '.', c = 'b', label = 'L')
+            plt.title('Profile in ROI %s ' %(iD))   # subplot 211 title
+            plt.xlabel('Cortical depth')
+            plt.ylabel('T2-nobias intensity')
+            plt.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
+            plt.legend(loc='upper right', numpoints = 1)
+            plt.savefig(directory + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))   
+            
+            # TODO: delete later if no need: save profiles also to the outer folder!
+            #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))    
+            plt.clf()
+            plt.close() 
+    print 'found ', numOfCommonRLregions, ' numOfCommonRLregions '       
             
        
     # plot these plots into 1 image
     fig = plt.figure(figsize=(21, 6)) #, dpi=80, facecolor='w', edgecolor='k')
-    ax1 = fig.add_subplot(131)
+    numOfCommonRLregions += 1
+    ax1 = fig.add_subplot(1,numOfCommonRLregions,1)
     ax1.plot(coordL, valueL, '.', c = 'b', label = 'L')
-    plt.title('Profile in all ROIs')   # subplot 211 title
-    #ax1.xlabel('Cortical depth')
-    #ax1.ylabel('T2-nobias intensity')
+    ax1.set_title('Profile in all ROIs')   # subplot 211 title
+    ax1.set_xlabel('Cortical depth')
+    ax1.set_ylabel('T2-nobias intensity')
     ax1.plot(coordR, valueR, '.', c = 'r', label = 'R')
-    plt.legend(loc='upper right', numpoints = 1)
+    ax1.legend(loc='upper right', numpoints = 1)
    
     for i in range(len(profROIsL)):
-        # read in the respective files
-        numbROIsL, coordROIsL, valueROIsL = np.loadtxt(profROIsL[i], skiprows = 1, unpack = True)
-        numbROIsR, coordROIsR, valueROIsR = np.loadtxt(profROIsR[i], skiprows = 1, unpack = True)
-        
-        # get the ROI ID
-        iD = profROIsL[i].split('_L_profiles2_ROI_')[1]
-        iD = iD.split('.txt')[0]
-
-        ax2 = fig.add_subplot(1,3, 2 + i)
-        ax2.plot(coordROIsL, valueROIsL, '.', c = 'b', label = 'L')
-        plt.title('Profile in ROI %s' %(iD))   # subplot 211 title
-        #ax2.xlabel('Cortical depth')
-        #ax2.ylabel('T2-nobias intensity')
-        ax2.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
-        plt.legend(loc='upper right', numpoints = 1)
+        profROIsRcorrespond = glob.glob(profROIsL[i].replace('_L_', '_R_'))
+        if len(profROIsRcorrespond) == 1: 
+            # read in the respective files
+            numbROIsL, coordROIsL, valueROIsL = np.loadtxt(profROIsL[i], skiprows = 1, unpack = True)
+            numbROIsR, coordROIsR, valueROIsR = np.loadtxt(profROIsRcorrespond[0], skiprows = 1, unpack = True)
+            
+            # get the ROI ID
+            iD = (profROIsL[i].split('_L_profiles2_ROI_')[1]).split('.txt')[0]
+            ax2 = fig.add_subplot(1,numOfCommonRLregions, 2 + i)
+            ax2.plot(coordROIsL, valueROIsL, '.', c = 'b', label = 'L')
+            ax2.set_title('Profile in ROI %s' %(iD))   # subplot 211 title
+            ax2.set_xlabel('Cortical depth')
+            ax2.set_ylabel('T2-nobias intensity')
+            ax2.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
+            ax2.legend(loc='upper right', numpoints = 1)
 
     #plt.show()
+    print 'save the image /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s_LvsR_allVsROIs.png' %(realPatientID)
     plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_allVsROIs.png' %(realPatientID), bbox_inches='tight')    
     plt.clf()
     plt.close()
+    print 'saved the image /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s_LvsR_allVsROIs.png' %(realPatientID)
+    
+    
     # plot it for sufficiently large testBatchColumnsExtrProfiles
+    # for a given diameter
+    # find all thresholds
+    # plot e.g. ROI 21 LvsR for diam = 5 size > 392
+    
+    ## find those thresholds where non zero number of columns is available. for left
+    ##largeL = glob.glob(directory + '/diam%s/%s_L_IDs_diam%s_over_[0-9]*.txt' %(columnDiameter, realPatientID, columnDiameter))
+    #largeL = glob.glob(directory + '%s_L_nobiasT2_ROIs_11_21_diam%s_over[0-9]*_exclCommun.png' %(realPatientID, columnDiameter))
+    ##ag140439_R_nobiasT2_ROIs_11_21_diam3_over197_exclCommun.png
+    #print 'found largeL'
+    #print largeL
+    ## and for right realSide
+    ##largeR = glob.glob(directory + '/diam%s/%s_R_IDs_diam%s_over_[0-9]*.txt' %(columnDiameter, realPatientID, columnDiameter))
+    #largeR = glob.glob(directory + '%s_R_nobiasT2_ROIs_11_21_diam%s_over[0-9]*_exclCommun.png' %(realPatientID, columnDiameter))
+    #print 'found largeR'
+    #print largeR
+    ## find common elements
+    ##largeLnum = [int((x.split('_over_')[1]).split('.txt')[0]) for x in largeL]
+    #largeLnum = [int((x.split('_over')[1]).split('_exclCommun.png')[0]) for x in largeL]
+    #print largeLnum
+    ##largeRnum = [int((x.split('_over_')[1]).split('.txt')[0]) for x in largeR]
+    #largeRnum = [int((x.split('_over')[1]).split('_exclCommun.png')[0]) for x in largeR]
+    #print largeRnum
+    
+    ## find common elelemnts
+    #common = set(largeLnum) & set(largeRnum)
+    #print common
+    
+    ## plot LvsR for various ROIs for these thresholds
+    #for i in common:
+        #print i
+        ## find all points from the L hemisphere in ROI 11 that are in columns larger i
+        ## open file _L_ColumnInfo.txt - see which columns to take into which ROIs
+        
+    
+    
+    
+
+    
 
       
   
