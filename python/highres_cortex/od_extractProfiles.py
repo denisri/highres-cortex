@@ -62,6 +62,7 @@ import numpy as np
 import highres_cortex.od_cutOutRois
 from soma.aims import volumetools
 import matplotlib.pyplot as plt
+import math
 
 
 def extractProfiles(volCoord, volValue, volMask = None):
@@ -123,20 +124,36 @@ def extractProfiles(volCoord, volValue, volMask = None):
     
 
     
-def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volMask = None):
+def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrThr, minColumnSize, volMask = None):
     """
     this function takes 2 volumes, one with values (T2) and another with corresponding coordinates (cortex
     depth measure from Yann's scripts.) It also takes a volume with "cortical columns" and will extract 
     lists of profiles for each of the columns separately.
     It also optionally takes a mask in which the profiles will be extracted.
     If no mask was given, profiles are extracted in the whole volume.
-    Forfiles are extracted as a list of values and a list of coordinates.    
+    Forfiles are extracted as a list of values and a list of coordinates. 
+    
+    modified: now also require the div_gradn image, to check whether a particular column is
+    situated on a flat PT region (mean value of the div_gradn should be around zero)
+    or on a curved region (mean value of the div_gradn should >> 0 or << 0)
     """
     #print volCoord.header()
     
+    #TODO: check if this is correct. Attention: modifying the original data!!
+    #arrColouredVol = np.array(volColumns, copy = True)
+    #print 'len(arrColouredVol)= ', len(arrColouredVol)
+    #arrColouredVol1 = arrColouredVol[mask != 0]
+    #arrColouredVol11 = arrColouredVol1[arrCoord1 != 0]
+    volColoured = aims.Volume(volColumns.getSizeX(), volColumns.getSizeY(), volColumns.getSizeZ(), volColumns.getSizeT(), 'S16')
+    volColoured.header().update(volColumns.header())
+    volColoured.fill(0)
+    print 'volColoured.header() = ', volColoured.header()
+    arrColouredVol = np.array(volColoured, copy = False)
+        
     arrCoord = np.asarray(volCoord)
     arrValue = np.asarray(volValue)
     arrColumns = np.asarray(volColumns)
+    arrDivGradn = np.asarray(volDivGradn)
 
     # apply the mask if it was given
     listOfSeparateCoords = []
@@ -157,9 +174,14 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
         # get these ROIs
         arrCoord1 = arrCoord[mask != 0]
         arrValue1 = arrValue[mask != 0]
-        
+        arrDivGradn1 = arrDivGradn[mask != 0]
+        arrColouredVol1 = np.where(mask != 0)
+        print 'arrColouredVol:', arrColouredVol.shape
+        print 'mask:', np.where(mask != 0)
+       
         coords = arrCoord1[arrCoord1 != 0]
         values = arrValue1[arrCoord1 != 0]
+        divGradns = arrDivGradn1[arrCoord1 != 0]
         
         ids = np.where(arrCoord1 != 0)
         print len(ids), ' len(ids) ', len(coords), ' len(coords) '
@@ -179,20 +201,78 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
         #roiIds = np.unique(arrColumns)
         print 'found the following ROIs. their number  ', len(roiIds), ' from total number : ', len(np.unique(arrColumns))
         #print roiIds
-        
+        listOfAvgDivGradn = []
+        listOfAvgDivGradnCateg = []     # it will be a list of 'classes' for the value of the average div gradn for a partucular column
+        print 'len(arrColouredVol)= ', len(arrColouredVol)
+        counters=[0,0,0]
+        countVoxels=[0,0,0]
+
         for i in roiIds:
-            # print len(arrCoord), len(roiColumns)
+            #print 'roi ', i, len(arrCoord), len(roiColumns)
             # TODO! check if this is OK: I take the whole column even if only 1 voxel is inside the voronoiCorr. Cut it?
             arrCoord1i = arrCoord1[roiColumns == i]
-            arrValue1i = arrValue1[roiColumns == i]           
+            arrValue1i = arrValue1[roiColumns == i]  
+            arrDivGradn1i = arrDivGradn1[roiColumns == i]  
+            
             coordsi = arrCoord1i[arrCoord1i != 0]
             valuesi = arrValue1i[arrCoord1i != 0]
+            divGradnsi = arrDivGradn1i[arrCoord1i != 0]
             
-            #print 'work with ROI ', i, ' # of points= ', len(coordsi)
+            avgDiv = np.mean(divGradnsi)
+            print '------------------------- work with ROI ', i, ' # of points= ', len(coordsi), ' average divGradn = ', avgDiv, ' ----------------'
+            #if math.isnan(avgDiv):
+                #print len(coordsi), len(valuesi), len(divGradnsi), ' the whole digGradnList',  divGradnsi               
+                
             listOfSeparateCoords.append(coordsi)
             listOfSeparateValues.append(valuesi)   
             listOfSizes.append(len(coordsi))
-                        
+            listOfAvgDivGradn.append(avgDiv)
+            
+                   
+            # TODO: delete it later!!! colour the initial image into 3 colours:
+            # if avg < - 0.1 blue ,  if 0.1 >= avg >= - 0.1 yellow,   if avg > 0.1 red     
+            #print 'len(arrColouredVol) = ', len(arrColouredVol), len(arrValue), len(arrValue1), len(arrValue1i), 'len(arrColouredVol1) = ', len(arrColouredVol1), ' len(roiColumns)= ', len(roiColumns), ' i= ', i
+            
+            #print 'arrColouredVol1:', arrColouredVol1
+            if avgDiv < divGrThr[0]:   # colour this column blue
+                #print len(np.where(roiColumns == i))
+                #print len(arrColouredVol1[roiColumns == i])
+                #print 'colour 10'
+                arrColouredVol[arrColouredVol1[0][roiColumns == i], 
+                               arrColouredVol1[1][roiColumns == i],
+                               arrColouredVol1[2][roiColumns == i],
+                               arrColouredVol1[3][roiColumns == i]] = 10   
+                counters[0] += 1
+                countVoxels[0] += len(coordsi)
+                listOfAvgDivGradnCateg.append(10)
+            elif avgDiv < divGrThr[1]:  # colour this column yellow
+                arrColouredVol[arrColouredVol1[0][roiColumns == i], 
+                               arrColouredVol1[1][roiColumns == i],
+                               arrColouredVol1[2][roiColumns == i],
+                               arrColouredVol1[3][roiColumns == i]] = 20  
+                counters[1] += 1
+                countVoxels[1] += len(coordsi)
+                listOfAvgDivGradnCateg.append(20)
+            else:       # colour this column red
+                arrColouredVol[arrColouredVol1[0][roiColumns == i], 
+                               arrColouredVol1[1][roiColumns == i],
+                               arrColouredVol1[2][roiColumns == i],
+                               arrColouredVol1[3][roiColumns == i]] = 30
+                #print 'colour 30' 
+                counters[2] += 1
+                countVoxels[2] += len(coordsi)
+                listOfAvgDivGradnCateg.append(30)
+        # save this new colouring scheme
+        newVol = aims.Volume(arrColouredVol)
+        #print newVol.header()
+        #aims.write(newVol, '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/testColouredVol6.nii.gz')
+        #print 'unique values:', np.unique(arrColouredVol)
+        #aims.write(volColoured, '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/sg140335/divGradnClasses/sg140335_R_testColouredVol_01_01.nii.gz')
+        print 'lower ', divGrThr[0], ' : ', counters[0]/float(len(roiIds)), ', lower ', divGrThr[1], ' : ', counters[1]/float(len(roiIds)), ', over ', divGrThr[1], ' : ', counters[2]/float(len(roiIds))   
+        print 'lower ', divGrThr[0], ' : ', countVoxels[0]/float(sum(countVoxels)), ', lower ', divGrThr[1], ' : ', countVoxels[1]/float(sum(countVoxels)), ', over ', divGrThr[1], ' : ', countVoxels[2]/float(sum(countVoxels))
+        #print 'forced exit'
+        #sys.exit(0)
+        
         # get IDs of columns in various mask regions
         #print 'len(roisMask) ', len(roisMask)
         for j in range(len(roisMask)):
@@ -262,11 +342,15 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volM
     res = []
     res.append(coords)
     res.append(values)
-    res.append(roiIds)
+    res.append(roiIds)  # ids of the 'cortical' columns
     res.append(listOfSeparateCoords)
     res.append(listOfSeparateValues)
     res.append(listOfROIsInMask)
     res.append(listOfSizes)
+    # add the info about div gradn averages
+    res.append(listOfAvgDivGradn)
+    res.append(volColoured)
+    res.append(listOfAvgDivGradnCateg)
     return(res)       
     
 
@@ -284,6 +368,12 @@ if __name__ == '__main__':
     heights = []
     minColumnSizes = []
     ignoreCommunColums = True
+    #divGradnThresholds = [-0.1, 0.1]
+    #divGradnThresholds = [-0.2, 0.2]
+    #divGradnThresholds = [-0.2, 0.3]
+    #divGradnThresholds = [-0.3, 0.3]
+    #divGradnThresholds = [-0.2, 0.35]
+    divGradnThresholds = [-0.25, 0.35]
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -404,9 +494,13 @@ if __name__ == '__main__':
 
         volColumns = aims.read(volsColumns[0])  
         print 'volColumns = ', volsColumns[0]
+        
+        # read in the div_gradn file (for measuring the flatness of the resoective column region)
+        volDivGradn = aims.read(directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide))          
+        print 'volDivGradn = ', directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
         #result = extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volMask)
         # repeat for the NEW nobias images!
-        result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, minColumnSize, volMask)      
+        result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, minColumnSize, volMask)   
     
     # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
     #coordinates = result[0]
@@ -456,7 +550,10 @@ if __name__ == '__main__':
     iDs = result2[2]
     listOfCoords = result2[3]
     listOfValues = result2[4]
-    
+    listOfAvgDivGrads = result2[7]
+    volColouredByAvgDivGrads = result2[8]
+    listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
+
     addedColumnsDiamName = ''
     pathForFiles = directory
     print '############################################ columnDiameter = ', str(columnDiameter)
@@ -475,7 +572,7 @@ if __name__ == '__main__':
     maskArray = np.asarray(volMask)
     maskROIids = np.unique(maskArray[np.where(maskArray > 0)])            
     dataS = open(pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
-    headerInfo = '\tColumnID\tSize'
+    headerInfo = '\tColumnID\tSize\tAvgDivGradn'
     
     # complete the header with the mask ROI info. If columnDiameter was given
     if columnDiameter is not None:        
@@ -487,9 +584,21 @@ if __name__ == '__main__':
         
     dataS.write(headerInfo)    
     sizeSorted = pathForFiles + 'sortedBySize/'
+    divGradnSorted = pathForFiles + 'sortedByDivGradn/'
+    divGradnClasses = directory + 'divGradnClasses/'
+
     if not os.path.exists(sizeSorted):
         os.makedirs(sizeSorted)
-        
+    if not os.path.exists(divGradnSorted):
+        os.makedirs(divGradnSorted)
+    if not os.path.exists(divGradnClasses):
+        os.makedirs(divGradnClasses)
+       
+    #test whether the length of ids and avgdivgradns is the same
+    if len(iDs) != len(listOfAvgDivGrads):
+        print 'lengths are unequal!!! ', len(iDs), len(listOfAvgDivGrads), ' force exit'
+        sys.exit(0)
+    
     for i in range(len(iDs)):
         #print 'i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
@@ -499,7 +608,12 @@ if __name__ == '__main__':
         plt.xlabel('Cortical depth')
         plt.ylabel('T2-nobias intensity')
         
-        currLine = '\t%s\t%s' %(str(iDs[i]), len(currCoords))
+        
+        # get the info on the gradient
+        currGradn = listOfAvgDivGrads[i]
+        strCurrGradn = "%.3f" % currGradn
+        strCurrGradnStr = str(strCurrGradn).replace('.','')   
+        currLine = '\t%s\t%s\t%s' %(str(iDs[i]), len(currCoords), strCurrGradn)
         # add info on Mask ROIs. if diameter was given
         if columnDiameter is not None:
             for j in range(len(maskROIids)):
@@ -518,15 +632,17 @@ if __name__ == '__main__':
                 #print 'ignore ', i
             else:
                 currLine += '\t0'  
-                
-        currLine += '\n'
-        dataS.write(currLine)
        
         # do not plot if it is zero
         if len(currCoords) != 0:
             plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
             # write out the same info, but sorted by sizes
             plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+            
+            ## now save the same plots but sorted by their avg gradients
+              
+            #plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
+            
             data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
             data2i.write(headerLine + '\n')
             for j in range(len(currCoords)):
@@ -534,9 +650,13 @@ if __name__ == '__main__':
             data2i.close()  
             
         plt.clf()
-        plt.close()        
+        plt.close()     
+        
+        currLine += '\n'
+        dataS.write(currLine)
+        
     dataS.close()             
-            
+    
     # plot the ROIs from the mask (columns of any size) on one plot
     roiNames = ''
     for i in range(len(iDs)):
@@ -562,6 +682,12 @@ if __name__ == '__main__':
                 
     # get results for various sizes of columns
     if columnDiameter is not None:
+        # write out the volume coloured according to the average divGradn Values        
+        strT = (str(divGradnThresholds[0]) + '_' +  str(divGradnThresholds[1])).replace('.','')         # transform thresholds into the string
+        aims.write(volColouredByAvgDivGrads, divGradnClasses + '%s_%s_nobiasT2%s_divGradnColour%s.nii.gz' %(realPatientID, realSide, addedColumnsDiamName, strT))
+        print 'forced exit'     #TODO: delete when not needed!
+        sys.exit(0)
+
         # plot the histogram of column sizes
         sizes = result2[6]
         plt.hist(sizes, bins = 50)
