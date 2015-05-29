@@ -369,11 +369,12 @@ if __name__ == '__main__':
     minColumnSizes = []
     ignoreCommunColums = True
     #divGradnThresholds = [-0.1, 0.1]
-    #divGradnThresholds = [-0.2, 0.2]
+    divGradnThresholds = [-0.2, 0.2]
     #divGradnThresholds = [-0.2, 0.3]
     #divGradnThresholds = [-0.3, 0.3]
-    divGradnThresholds = [-0.2, 0.35]
+    #divGradnThresholds = [-0.2, 0.35]
     #divGradnThresholds = [-0.25, 0.35]
+    #divGradnThresholds = [-0.5, 0.5] #just for test
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -639,9 +640,8 @@ if __name__ == '__main__':
             # write out the same info, but sorted by sizes
             plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
             
-            ## now save the same plots but sorted by their avg gradients
-              
-            #plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
+            ## now save the same plots but sorted by their avg gradients              
+            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
             
             data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
             data2i.write(headerLine + '\n')
@@ -679,11 +679,10 @@ if __name__ == '__main__':
     plt.clf()
     plt.close() 
      
-                
+    strT = (str(divGradnThresholds[0]) + '_' +  str(divGradnThresholds[1])).replace('.','')         # transform thresholds into the string            
     # get results for various sizes of columns
     if columnDiameter is not None:
         # write out the volume coloured according to the average divGradn Values        
-        strT = (str(divGradnThresholds[0]) + '_' +  str(divGradnThresholds[1])).replace('.','')         # transform thresholds into the string
         aims.write(volColouredByAvgDivGrads, divGradnClasses + '%s_%s_nobiasT2%s_divGradnColour%s.nii.gz' %(realPatientID, realSide, addedColumnsDiamName, strT))
         #print 'forced exit'     #TODO: delete when not needed!
         #sys.exit(0)
@@ -772,8 +771,16 @@ if __name__ == '__main__':
         # lists of ROIs of various sizes accepted depending on the AvgDivGradn (ADG) thresholds
         listsOfCoordsForMaskVariousThrADG = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
         listsOfValuesForMaskVariousThrADG = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)] 
-        listsOfColumnIDsForMaskVariousThrADG = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
-       
+        listsOfColumnIDsForMaskVariousThrADG = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]        
+        # lists of ROIs of various sizes rejected depending on the AvgDivGradn (ADG) thresholds (too small)
+        listsOfCoordsForMaskVariousThrADGs = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
+        listsOfValuesForMaskVariousThrADGs = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)] 
+        listsOfColumnIDsForMaskVariousThrADGs = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
+        # lists of ROIs of various sizes rejected depending on the AvgDivGradn (ADG) thresholds (too big)
+        listsOfCoordsForMaskVariousThrADGb = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
+        listsOfValuesForMaskVariousThrADGb = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)] 
+        listsOfColumnIDsForMaskVariousThrADGb = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
+        
         maskArray = np.asarray(volMask)
         maskROIids = np.unique(maskArray[np.where(maskArray > 0)])
         
@@ -797,6 +804,8 @@ if __name__ == '__main__':
                     #print 'indexOfThisID ', indexOfThisID
                     currCoords = listOfCoords[indexOfThisID]
                     currValues = listOfValues[indexOfThisID]                    
+                    #get the avg div gradn for the current column
+                    currAvgDivGradn = listOfAvgDivGradsCateg[indexOfThisID]
                     
                     for t in range(len(minColumnSizes)):
                         #print t, j
@@ -807,8 +816,19 @@ if __name__ == '__main__':
                             repeatedID = [k] * len(currValues)                            
                             listsOfColumnIDsForMaskVariousThr[j][t].extend(repeatedID) 
                             
-                            #TODO !!!!!!!!! check if the AvgDivGradn is between the thresholds, then add the coordinates to another list!!!
-                            
+                            # check if the AvgDivGradn is between the thresholds, then add the coordinates/values to another list!!!
+                            if currAvgDivGradn == 20:
+                                listsOfCoordsForMaskVariousThrADG[j][t].extend(currCoords)
+                                listsOfValuesForMaskVariousThrADG[j][t].extend(currValues)  
+                                listsOfColumnIDsForMaskVariousThrADG[j][t].extend(repeatedID)  
+                            elif currAvgDivGradn == 10:
+                                listsOfCoordsForMaskVariousThrADGs[j][t].extend(currCoords)
+                                listsOfValuesForMaskVariousThrADGs[j][t].extend(currValues)  
+                                listsOfColumnIDsForMaskVariousThrADGs[j][t].extend(repeatedID)  
+                            else:
+                                listsOfCoordsForMaskVariousThrADGb[j][t].extend(currCoords)
+                                listsOfValuesForMaskVariousThrADGb[j][t].extend(currValues)  
+                                listsOfColumnIDsForMaskVariousThrADGb[j][t].extend(repeatedID)  
                             
                             
         # plot the data for mask rois of large columns (various size thresholds). For ROIs separately, and together
@@ -884,10 +904,13 @@ if __name__ == '__main__':
         # plot the same but also: included and rejected regions, according to the div_gradn volume
         for t in range(len(minColumnSizes)):            
             numOfRegions = len(maskROIids) + 1  # mask rois and one plot with all together   
-            fig = plt.figure(figsize=(numOfRegions * 7, 6 * 2)) #, dpi=80, facecolor='w', edgecolor='k')
+            fig = plt.figure(figsize=(numOfRegions * 7, 6 * 4)) #, dpi=80, facecolor='w', edgecolor='k')
             # and now plot the same to the last plot: all mask ROIs together
-            axAll = fig.add_subplot(2,numOfRegions,numOfRegions)        
-            axAllSelected = fig.add_subplot(2,numOfRegions,numOfRegions * 2)    # a plot for Roi 11 and 21, for the "selected" columns
+            axAll = fig.add_subplot(4,numOfRegions,numOfRegions)        
+            axAllSelected = fig.add_subplot(4,numOfRegions,numOfRegions * 2)    # a plot for Roi 11 and 21, for the "selected" columns
+            axAllRejectedS = fig.add_subplot(4,numOfRegions,numOfRegions * 3)    # a plot for Roi 11 and 21, for the "rejected" columns, too small AvgDivGradn
+            axAllRejectedB = fig.add_subplot(4,numOfRegions,numOfRegions * 4)    # a plot for Roi 11 and 21, for the "rejected" columns, too high AvgDivGradn            
+            
             #plt.plot()
             #plt.title('Profile in Mask ROIs of large cortical columns')   
             ##plt.xlabel('Cortical depth')
@@ -899,7 +922,7 @@ if __name__ == '__main__':
             for j in range(len(maskROIids)):
                 roiNames += '_' + str(maskROIids[j])
                 #plt.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', label = 'ROI '+ str(maskROIids[j]))                
-                ax1 = fig.add_subplot(2,numOfRegions,j + 1)
+                ax1 = fig.add_subplot(4,numOfRegions,j + 1)
                 ax1.plot(listsOfCoordsForMaskVariousThr[j][t], listsOfValuesForMaskVariousThr[j][t], '.', c = colours[j], label = 'ROI '+ str(maskROIids[j]))
                 #plt.title('Profile in maskROI %s' %(maskROIids[j]))   # subplot 211 title
                 ax1.set_title('Profile in maskROI %s' %(maskROIids[j]))
@@ -927,28 +950,84 @@ if __name__ == '__main__':
                             f.write(s)        
                         f.close()
                         
-                # check if this particular cortical column's AvgDivGradn Value is between the thresholds, the plot it to the second row of the figure
-                if len(listsOfColumnIDsForMaskVariousThr[j][t]) != 0:   
-                    #for rr in range(len(listsOfColumnIDsForMaskVariousThr[j][t])):
-                        #print rr , listsOfColumnIDsForMaskVariousThr[j][t][rr]
-                        
-                    
-                    print 'currROI is ', listsOfColumnIDsForMaskVariousThr[j][t][0]
-                    num = np.where(np.array(iDs) == listsOfColumnIDsForMaskVariousThr[j][t][0])[0][0]
-                    avgDivGrandClass = listOfAvgDivGradsCateg[num]
-                    print 'num is ', num, ' roi ', listsOfColumnIDsForMaskVariousThr[j][t][0], ' AvgDivGradn ', listOfAvgDivGrads[num], ' divGradnClass ', listOfAvgDivGradsCateg[num]
-                    if (avgDivGrandClass == 20):         # this is the id of the current column. need to get the "class" value for the AvgDivGradn
-                        print 'Column ROI ', listsOfColumnIDsForMaskVariousThr[j][t][0], ' should be accepted. AvgDivGradn = ', listOfAvgDivGrads[num]
+                
+                # plot the point from the columns selected or rejected according to the AvgDivGradn
+                ax1selected = fig.add_subplot(4,numOfRegions,j + 1 + numOfRegions)
+                ax1RejectedS = fig.add_subplot(4,numOfRegions,j + 1 + numOfRegions * 2)
+                ax1RejectedB = fig.add_subplot(4,numOfRegions,j + 1 + numOfRegions * 3)
+                
+                ax1selected.plot(listsOfCoordsForMaskVariousThrADG[j][t], listsOfValuesForMaskVariousThrADG[j][t], '.', c = colours[j], label = 'ROI '+ str(maskROIids[j]) + ' selected AvgDivGradn')
+                ax1RejectedS.plot(listsOfCoordsForMaskVariousThrADGs[j][t], listsOfValuesForMaskVariousThrADGs[j][t], '.', c = colours[j], label = 'ROI '+ str(maskROIids[j]) + ' too small AvgDivGradn')
+                ax1RejectedB.plot(listsOfCoordsForMaskVariousThrADGb[j][t], listsOfValuesForMaskVariousThrADGb[j][t], '.', c = colours[j], label = 'ROI '+ str(maskROIids[j]) + ' too high AvgDivGradn')
+                
+                ax1selected.set_title('Profile in maskROI %s, %s < AvgDivGradn < %s' %(maskROIids[j], divGradnThresholds[0], divGradnThresholds[1]))
+                ax1selected.set_xlabel('Cortical depth') 
+                ax1selected.set_ylabel('T2-nobias intensity')                 
+                ax1selected.legend(loc='upper right', numpoints = 1)                   
+                ax1RejectedS.set_title('Profile in maskROI %s, %s > AvgDivGradn' %(maskROIids[j], divGradnThresholds[0]))
+                ax1RejectedS.set_xlabel('Cortical depth') 
+                ax1RejectedS.set_ylabel('T2-nobias intensity')                 
+                ax1RejectedS.legend(loc='upper right', numpoints = 1) 
+                ax1RejectedB.set_title('Profile in maskROI %s, %s < AvgDivGradn' %(maskROIids[j], divGradnThresholds[1]))
+                ax1RejectedB.set_xlabel('Cortical depth') 
+                ax1RejectedB.set_ylabel('T2-nobias intensity')                 
+                ax1RejectedB.legend(loc='upper right', numpoints = 1)                
+                
+                # and now plot the same to the last plot: all mask ROIs together
+                axAllSelected.plot(listsOfCoordsForMaskVariousThrADG[j][t], listsOfValuesForMaskVariousThrADG[j][t], '.', label = 'ROI '+ str(maskROIids[j]) + ' selected AvgDivGradn')
+                axAllRejectedS.plot(listsOfCoordsForMaskVariousThrADGs[j][t], listsOfValuesForMaskVariousThrADGs[j][t], '.', label = 'ROI '+ str(maskROIids[j]) + ' too small AvgDivGradn')
+                axAllRejectedB.plot(listsOfCoordsForMaskVariousThrADGb[j][t], listsOfValuesForMaskVariousThrADGb[j][t], '.', label = 'ROI '+ str(maskROIids[j]) + ' too high AvgDivGradn')
+                
+                print '----------------------------------------------------- len(listsOfCoordsForMaskVariousThrADG[',j,'][',t,']) = ', len(listsOfCoordsForMaskVariousThrADG[j][t])
+                numP += len(listsOfCoordsForMaskVariousThr[j][t])
+                
+                # write out a file with columnID, coord, value (corresponding to this mask ROI and size threshold)
+                if len(listsOfCoordsForMaskVariousThrADG[j][t]) != len(listsOfColumnIDsForMaskVariousThrADG[j][t]):
+                    print ' --------------------------- PROBLEM !'
                 else:
-                    print 'empty'
-                    
+                    # write out profiles if diameter is > 1
+                    if columnDiameter > 1 and len(listsOfCoordsForMaskVariousThrADG[j][t]) > 0:                        
+                        f = open(pathForFiles + '%s_%s_MaskROI%s_profiles%s_over_%s_avgDivGradn_%s.txt' %(realPatientID, realSide, str(maskROIids[j]), addedColumnsDiamName, str(minColumnSizes[t]), strT), "w")
+                        #print 'write out a file %s_%s_MaskROI%s_profiles%s_over_%s.txt' %(realPatientID, realSide, str(maskROIids[j]), addedColumnsDiamName, str(minColumnSizes[t])), ' number of elements ', len(listsOfCoordsForMaskVariousThr[j][t])
+                        s = 'ColumnID\tCoord\tValue\n'
+                        f.write(s)
+                        for z in range(len(listsOfCoordsForMaskVariousThrADG[j][t])):
+                            s = str(listsOfColumnIDsForMaskVariousThrADG[j][t][z]) + '\t' + str(listsOfCoordsForMaskVariousThrADG[j][t][z]) + '\t' + str(listsOfValuesForMaskVariousThrADG[j][t][z]) + '\n'                   
+                            f.write(s)        
+                        f.close()
+                        #TODO: need to write out profiles of columns with too low or too high AvgDivGradn??
                         
+                        
+                # TODO : delete it. only for verification
+                # check if this particular cortical column's AvgDivGradn Value is between the thresholds, the plot it to the second row of the figure
+                if len(listsOfColumnIDsForMaskVariousThrADG[j][t]) != 0:  
+                    uniqueCols = np.unique(listsOfColumnIDsForMaskVariousThrADG[j][t])
+                    for tt in range(len(uniqueCols)):
+                        num = np.where(np.array(iDs) == uniqueCols[tt])[0][0]
+                        avgDivGrandClass = listOfAvgDivGradsCateg[num]
+                        print 'num is ', num, ' roi ', uniqueCols[tt], ' AvgDivGradn ', listOfAvgDivGrads[num], ' divGradnClass ', listOfAvgDivGradsCateg[num]
+                        if (avgDivGrandClass == 20):         # this is the id of the current column. need to get the "class" value for the AvgDivGradn
+                            print ' should be accepted'
+                            
             
             axAll.set_title('Profile in all maskROIs')
             axAll.set_xlabel('Cortical depth') 
             axAll.set_ylabel('T2-nobias intensity') 
             axAll.legend(loc='upper right', numpoints = 1)            
                             
+            axAllSelected.set_title('Profile in all maskROIs, %s < AvgDivGradn < %s' %(divGradnThresholds[0], divGradnThresholds[1]))
+            axAllSelected.set_xlabel('Cortical depth') 
+            axAllSelected.set_ylabel('T2-nobias intensity') 
+            axAllSelected.legend(loc='upper right', numpoints = 1)            
+            axAllRejectedS.set_title('Profile in all maskROIs, %s > AvgDivGradn' %(divGradnThresholds[0]))
+            axAllRejectedS.set_xlabel('Cortical depth') 
+            axAllRejectedS.set_ylabel('T2-nobias intensity') 
+            axAllRejectedS.legend(loc='upper right', numpoints = 1)            
+            axAllRejectedB.set_title('Profile in all maskROIs, %s < AvgDivGradn' %(divGradnThresholds[1]))
+            axAllRejectedB.set_xlabel('Cortical depth') 
+            axAllRejectedB.set_ylabel('T2-nobias intensity') 
+            axAllRejectedB.legend(loc='upper right', numpoints = 1)
+            
             # modify the name if cortical columns communfor ROIs were included/excluded
             nameInclExcl = ''
             if ignoreCommunColums:
@@ -959,7 +1038,7 @@ if __name__ == '__main__':
                 nameInclExcl = 'inclCommun'
             # do not save the picture if it is empty
             if numP != 0:
-                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s_test.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl), bbox_inches='tight')            
+                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s_avgDivGradn_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl, strT), bbox_inches='tight')            
             plt.clf()
             plt.close()    
         
