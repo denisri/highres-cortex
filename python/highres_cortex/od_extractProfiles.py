@@ -369,10 +369,10 @@ if __name__ == '__main__':
     minColumnSizes = []
     ignoreCommunColums = True
     #divGradnThresholds = [-0.1, 0.1]
-    divGradnThresholds = [-0.2, 0.2]
+    #divGradnThresholds = [-0.2, 0.2]
     #divGradnThresholds = [-0.2, 0.3]
     #divGradnThresholds = [-0.3, 0.3]
-    #divGradnThresholds = [-0.2, 0.35]
+    divGradnThresholds = [-0.2, 0.35]
     #divGradnThresholds = [-0.25, 0.35]
     #divGradnThresholds = [-0.5, 0.5] #just for test
 
