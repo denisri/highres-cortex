@@ -47,7 +47,7 @@
 
 # example how to run this file:
 # with cortical columns
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/ -c 9
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/ -c 3
 
 # or without cortical columns
 #python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/
@@ -375,6 +375,8 @@ if __name__ == '__main__':
     divGradnThresholds = [-0.2, 0.35]
     #divGradnThresholds = [-0.25, 0.35]
     #divGradnThresholds = [-0.5, 0.5] #just for test
+    # TODO! find real intervals!! May be even different for PT and Heschl!!
+    corticalIntervals = [0, 0.1, 0.25, 0.35, 0.55, 0.75, 1.0]
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -587,6 +589,7 @@ if __name__ == '__main__':
     sizeSorted = pathForFiles + 'sortedBySize/'
     divGradnSorted = pathForFiles + 'sortedByDivGradn/'
     divGradnClasses = directory + 'divGradnClasses/'
+    corticalLayers = pathForFiles + 'corticalLayers/'
 
     if not os.path.exists(sizeSorted):
         os.makedirs(sizeSorted)
@@ -594,21 +597,33 @@ if __name__ == '__main__':
         os.makedirs(divGradnSorted)
     if not os.path.exists(divGradnClasses):
         os.makedirs(divGradnClasses)
+    if not os.path.exists(corticalLayers):
+        os.makedirs(corticalLayers)
        
     #test whether the length of ids and avgdivgradns is the same
     if len(iDs) != len(listOfAvgDivGrads):
         print 'lengths are unequal!!! ', len(iDs), len(listOfAvgDivGrads), ' force exit'
         sys.exit(0)
     
+    completeN = 0
+    incompleteN = 0
     for i in range(len(iDs)):
         #print 'i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
-        plt.plot(currCoords, currValues, '.', c = 'b')
-        plt.title('Profile in ROI %s' %(str(iDs[i])))   # subplot 211 title
-        plt.xlabel('Cortical depth')
-        plt.ylabel('T2-nobias intensity')
-        
+        fig = plt.figure(figsize=(2 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+        axPoints = fig.add_subplot(1,2,1)
+        axMeans = fig.add_subplot(1,2,2)
+        axPoints.plot(currCoords, currValues, '.', c = 'b') #, label = 'ROI '+ str(maskROIids[j]))
+
+        #plt.plot(currCoords, currValues, '.', c = 'b')
+        #plt.title('Profile in ROI %s' %(str(iDs[i])))   # subplot 211 title
+        #plt.xlabel('Cortical depth')
+        #plt.ylabel('T2-nobias intensity')  
+        axPoints.set_title('Profile in ROI %s' %(str(iDs[i])))
+        axPoints.set_xlabel('Cortical depth') 
+        axPoints.set_ylabel('T2-nobias intensity')                 
+        axPoints.legend(loc='upper right', numpoints = 1)   
         
         # get the info on the gradient
         currGradn = listOfAvgDivGrads[i]
@@ -635,13 +650,60 @@ if __name__ == '__main__':
                 currLine += '\t0'  
        
         # do not plot if it is zero
-        if len(currCoords) != 0:
-            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
+        if len(currCoords) != 0: 
+            # TODO! plot and also write out mean and stdv of values in 6 different cortical layers
+            # do it only for columns, where data in EACH cortical layer is available
+            means = []
+            stdvs = []
+            xCoords = []
+            complete = True     # shows whether points in every cortical layer were found
+            for c in range(len(corticalIntervals) - 1):
+                start = corticalIntervals[c]
+                stop = corticalIntervals[c + 1]
+                # find all points where the depth coordinate is between these thresholds
+                #thisLayerCoords = currCoords[np.where((currCoords >= start) & (currCoords < stop)]
+                thisLayerValues = currValues[np.where((currCoords >= start) & (currCoords < stop))]
+                # check the length: if zero: ignore this column
+                if (complete & (len(thisLayerValues) == 0)):
+                    complete = False                
+                
+                # save their means and stdvs
+                means.append(np.mean(thisLayerValues))
+                stdvs.append(np.std(thisLayerValues))
+                xCoords.append((start + stop) / 2.0)
+                
+            # collected the data for all layers. now plot for this particular column  
+            axMeans.set_title('Mean and stdv values in cortical layers in maskROI %s' %(str(iDs[i])))  
+            axMeans.set_xlabel('Cortical depth') 
+            axMeans.set_ylabel('T2-nobias intensity')                 
+            axMeans.legend(loc='upper right', numpoints = 1)     
+        
+            if complete:
+                axMeans.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', ecolor = 'r') # TODO! how to plot means and stdvs???
+                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+                # TODO! save txt files with means and stdvs !!
+                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
+                dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
+        
+                for j in range(len(xCoords)):
+                    dataCort.write(str(j + 1) + '\t' + str(xCoords[j]) + '\t' + str("%.4f" % means[j]) + '\t' + str("%.4f" % stdvs[j]) + '\n')    
+                dataCort.close()  
+                completeN += 1
+            else :
+                axMeans.errorbar(xCoords, means, stdvs, linestyle='None', marker='^', ecolor = 'r')
+                plt.savefig(sizeSorted + 'incomplete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+                # do NOT save separate txt files, as the data is incomplete and can not be used for clustering
+                incompleteN += 1
+                print 'incomplete ID ', str(iDs[i])
+           
+
+
+#            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
             # write out the same info, but sorted by sizes
-            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+#            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
             
             ## now save the same plots but sorted by their avg gradients              
-            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
+#            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
             
             data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
             data2i.write(headerLine + '\n')
@@ -649,13 +711,16 @@ if __name__ == '__main__':
                 data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
             data2i.close()  
             
+            
+            
         plt.clf()
         plt.close()     
         
         currLine += '\n'
         dataS.write(currLine)
         
-    dataS.close()             
+    dataS.close()   
+    print '*********************************************** complete ', completeN, ', incomplete ', incompleteN 
     
     # plot the ROIs from the mask (columns of any size) on one plot
     roiNames = ''
