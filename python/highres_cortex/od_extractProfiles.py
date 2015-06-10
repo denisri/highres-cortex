@@ -377,7 +377,8 @@ if __name__ == '__main__':
     #divGradnThresholds = [-0.5, 0.5] #just for test
     # TODO! find real intervals!! May be even different for PT and Heschl!!
 #    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
-    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.62, 0.72, 0.82, 0.91, 1.0]
+#    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.62, 0.72, 0.82, 0.91, 1.0]
+    corticalIntervals = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.72, 0.82, 1.0]
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
