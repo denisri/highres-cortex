@@ -376,7 +376,8 @@ if __name__ == '__main__':
     #divGradnThresholds = [-0.25, 0.35]
     #divGradnThresholds = [-0.5, 0.5] #just for test
     # TODO! find real intervals!! May be even different for PT and Heschl!!
-    corticalIntervals = [0, 0.1, 0.25, 0.35, 0.55, 0.75, 1.0]
+#    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
+    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.62, 0.72, 0.82, 0.91, 1.0]
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -680,9 +681,11 @@ if __name__ == '__main__':
         
             if complete:
                 axMeans.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', ecolor = 'r') # TODO! how to plot means and stdvs???
-                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
-                # TODO! save txt files with means and stdvs !!
-                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
+                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '_3.png')
+#                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+                # save txt files with means and stdvs !!
+                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s_3.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
+#                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
                 dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
         
                 for j in range(len(xCoords)):
@@ -691,7 +694,8 @@ if __name__ == '__main__':
                 completeN += 1
             else :
                 axMeans.errorbar(xCoords, means, stdvs, linestyle='None', marker='^', ecolor = 'r')
-                plt.savefig(sizeSorted + 'incomplete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+#                plt.savefig(sizeSorted + 'incomplete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+                plt.savefig(sizeSorted + 'incomplete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '_3.png')
                 # do NOT save separate txt files, as the data is incomplete and can not be used for clustering
                 incompleteN += 1
                 print 'incomplete ID ', str(iDs[i])
