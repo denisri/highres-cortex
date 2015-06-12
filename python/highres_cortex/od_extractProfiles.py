@@ -381,11 +381,6 @@ if __name__ == '__main__':
 #    corticalIntervals = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.72, 0.82, 1.0]
 
 
-    addedName = '_1PpL'        # 1 point per Layer
-    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.6, 0.8, 1.0]
-
-#    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-#    addedName = '_1PpDE'         # 1 point per depth entity
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -614,27 +609,10 @@ if __name__ == '__main__':
         print 'lengths are unequal!!! ', len(iDs), len(listOfAvgDivGrads), ' force exit'
         sys.exit(0)
     
-    completeN = 0
-    incompleteN = 0
-    complete5LayersN = 0
-    incomplete5LayersN = 0
     for i in range(len(iDs)):
         print '------------------ i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
-        fig = plt.figure(figsize=(2 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
-        axPoints = fig.add_subplot(1,2,1)
-        axMeans = fig.add_subplot(1,2,2)
-        axPoints.plot(currCoords, currValues, '.', c = 'b') #, label = 'ROI '+ str(maskROIids[j]))
-
-        #plt.plot(currCoords, currValues, '.', c = 'b')
-        #plt.title('Profile in ROI %s' %(str(iDs[i])))   # subplot 211 title
-        #plt.xlabel('Cortical depth')
-        #plt.ylabel('T2-nobias intensity')  
-        axPoints.set_title('Profile in ROI %s' %(str(iDs[i])))
-        axPoints.set_xlabel('Cortical depth') 
-        axPoints.set_ylabel('T2-nobias intensity')                 
-        axPoints.legend(loc='upper right', numpoints = 1)   
         
         # get the info on the gradient
         currGradn = listOfAvgDivGrads[i]
@@ -661,92 +639,13 @@ if __name__ == '__main__':
                 currLine += '\t0'  
        
         # do not plot if it is zero
-        if len(currCoords) != 0: 
-            # do it only for columns, where data in EACH cortical layer is available
-            means = []
-            stdvs = []
-            xCoords = []
-            complete = True     # shows whether points in every cortical layer were found
-            
-            # do the same for the case when we 'ignore' the layer I
-            complete5Layers = True     # shows whether points in 5 cortical layers (II - VI) were found
-            
-            for c in range(len(corticalIntervals) - 1):
-                start = corticalIntervals[c]
-                stop = corticalIntervals[c + 1]
-                # find all points where the depth coordinate is between these thresholds
-                #thisLayerCoords = currCoords[np.where((currCoords >= start) & (currCoords < stop)]
-                thisLayerValues = currValues[np.where((currCoords >= start) & (currCoords < stop))]
-                # check the length: if zero: ignore this column
-                if (complete & (len(thisLayerValues) == 0)):
-                    complete = False          
-                    
-                if (complete5Layers & (c != 0) & (len(thisLayerValues) == 0)):
-                    complete5Layers = False
-                    
-                # save their means and stdvs
-                means.append(np.mean(thisLayerValues))
-                stdvs.append(np.std(thisLayerValues))
-                xCoords.append((start + stop) / 2.0)
-                
-                print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
-                
-                
-            # collected the data for all layers. now plot for this particular column  
-            axMeans.set_title('Mean and stdv values in cortical layers in maskROI %s' %(str(iDs[i])))  
-            axMeans.set_xlabel('Cortical depth') 
-            axMeans.set_ylabel('T2-nobias intensity')                 
-            axMeans.legend(loc='upper right', numpoints = 1)     
-        
-            if complete:
-                axMeans.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', ecolor = 'r')
-                plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(iDs[i]), addedName))                
-#                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
-                # save txt files with means and stdvs !!
-                dataCort = open(corticalLayers + '%s_%s_CortLay%s_ROI_%s%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i]), addedName), "w")
-#                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
-                dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
-        
-                for j in range(len(xCoords)):
-                    dataCort.write(str(j + 1) + '\t' + str(xCoords[j]) + '\t' + str("%.4f" % means[j]) + '\t' + str("%.4f" % stdvs[j]) + '\n')    
-                dataCort.close()  
-                completeN += 1
-            else :
-                # now check, whether this profile is complete for 5 layers (II - VI)
-                if complete5Layers == False:
-                    # this profile is incomplete even for 5 layers
-                    incomplete5LayersN += 1
-                    print 'incomplete ID , even for 5 layers ', str(iDs[i])
-                    axMeans.errorbar(xCoords, means, stdvs, linestyle='None', marker='^', ecolor = 'r')
-                    plt.savefig(corticalLayers + '%s_%s_incompleteCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(iDs[i]), addedName))  
-                    # do NOT save separate txt files, as the data is incomplete and can not be used for clustering
-                    incompleteN += 1
-                else:   # this profile is incomplete for many points, but is complete for 5 layers
-                    axMeans.errorbar(xCoords[1:], means[1:], stdvs[1:], linestyle='solid', marker='^', ecolor = 'r') # plot means and stdvs for layers II - VI
-                    plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s_5Layers.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(iDs[i]), addedName))                
-                    # save txt files with means and stdvs !!
-                    dataCort = open(corticalLayers + '%s_%s_CortLay%s_ROI_%s%s_5Layers.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i]), addedName), "w")
-                    dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
-            
-                    for j in range(len(xCoords) - 1):
-                        dataCort.write(str(j + 2) + '\t' + str(xCoords[j + 1]) + '\t' + str("%.4f" % means[j + 1]) + '\t' + str("%.4f" % stdvs[j + 1]) + '\n')    
-                    dataCort.close()  
-                    complete5LayersN += 1                
-                
+        if len(currCoords) != 0:                                     
 
-#            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
-            # write out the same info, but sorted by sizes
-#            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
-            
-            ## now save the same plots but sorted by their avg gradients              
-#            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
-            
             data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
             data2i.write(headerLine + '\n')
             for j in range(len(currCoords)):
                 data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
-            data2i.close()  
-            
+            data2i.close()              
             
             
         plt.clf()
@@ -755,14 +654,7 @@ if __name__ == '__main__':
         currLine += '\n'
         dataS.write(currLine)
         
-    dataS.close()   
-    print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN, ', incomplete5LayersN =  ', incomplete5LayersN 
-    
-    # TODO! delete it later
-    sys.exit(0)
-    
-    
-    
+    dataS.close()    
     
     
     

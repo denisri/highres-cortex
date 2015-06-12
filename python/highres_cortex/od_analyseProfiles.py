@@ -63,6 +63,12 @@ if __name__ == '__main__':
     threshold = None
     #realSide = 'L'
     columnDiameter = None
+    
+    addedName = '_1PpL_test'        # 1 point per Layer
+    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.6, 0.8, 1.0]
+
+#    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+#    addedName = '_1PpDE'         # 1 point per depth entity
 
     parser = OptionParser('Analyze profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -104,6 +110,20 @@ if __name__ == '__main__':
         print '############################################ found profile directory = ', pathForFiles
 
 
+    sizeSorted = pathForFiles + 'sortedBySize/'
+    divGradnSorted = pathForFiles + 'sortedByDivGradn/'
+    divGradnClasses = directory + 'divGradnClasses/'
+    corticalLayers = pathForFiles + 'corticalLayers/'
+
+    if not os.path.exists(sizeSorted):
+        os.makedirs(sizeSorted)
+    if not os.path.exists(divGradnSorted):
+        os.makedirs(divGradnSorted)
+    if not os.path.exists(divGradnClasses):
+        os.makedirs(divGradnClasses)
+    if not os.path.exists(corticalLayers):
+        os.makedirs(corticalLayers)
+
     #if options.threshold is None:
         #print >> sys.stderr, 'New: exit. no threshold given'
         #sys.exit(1)
@@ -125,21 +145,120 @@ if __name__ == '__main__':
     # find columns larger than this threshold
     largeIDs = columnID[np.where(size >= sizeThreshold)]
     print 'largeIDs = ', largeIDs
+    completeN = 0
+    incompleteN = 0
+    complete5LayersN = 0
     
-#    for i in range(len(largeIDs)):
-    for i in range(1):
+    for i in range(len(largeIDs)):
+#    for i in range(1):
         # iterate through these profiles, calculate means, stdv in layers, plot figures, save files
         # find profiles of these large columns: ad140157_L_profiles2_diam3_ROI_259.txt - find all profile files like this one
         currID = int(largeIDs[i])
         print 'currID = ', currID
         profileFile = pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID))
         print 'work with file  ', profileFile
-        depthCoord, value  = np.loadtxt(profileFile, skiprows = 1, usecols = (1, 2), unpack=True)
+        currCoords, currValues  = np.loadtxt(profileFile, skiprows = 1, usecols = (1, 2), unpack=True)
         #print zip(depthCoord, value)
         
+        fig = plt.figure(figsize=(2 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+        axPoints = fig.add_subplot(1,2,1)
+        axMeans = fig.add_subplot(1,2,2)
+        axPoints.plot(currCoords, currValues, '.', c = 'b') #, label = 'ROI '+ str(maskROIids[j]))
+
+        axPoints.set_title('Profile in ROI %s' %(str(currID)))
+        axPoints.set_xlabel('Cortical depth') 
+        axPoints.set_ylabel('T2-nobias intensity')                 
+        axPoints.legend(loc='upper right', numpoints = 1)   
         
+        # do it only for columns, where data in EACH cortical layer is available
+        means = []
+        stdvs = []
+        xCoords = []
+        complete = True     # shows whether points in every cortical layer were found
+        
+        # do the same for the case when we 'ignore' the layer I
+        complete5Layers = True     # shows whether points in 5 cortical layers (II - VI) were found
+        
+        for c in range(len(corticalIntervals) - 1):
+            start = corticalIntervals[c]
+            stop = corticalIntervals[c + 1]
+            # find all points where the depth coordinate is between these thresholds
+            #thisLayerCoords = currCoords[np.where((currCoords >= start) & (currCoords < stop)]
+            thisLayerValues = currValues[np.where((currCoords >= start) & (currCoords < stop))]
+            # check the length: if zero: ignore this column
+            if (complete & (len(thisLayerValues) == 0)):
+                complete = False          
+                
+            if (complete5Layers & (c != 0) & (len(thisLayerValues) == 0)):
+                complete5Layers = False
+                
+            # save their means and stdvs
+            means.append(np.mean(thisLayerValues))
+            stdvs.append(np.std(thisLayerValues))
+            xCoords.append((start + stop) / 2.0)            
+            print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
+
+
+        # collected the data for all layers. now plot for this particular column  
+        axMeans.set_title('Mean and stdv values in cortical layers in maskROI %s' %(str(currID)))  
+        axMeans.set_xlabel('Cortical depth') 
+        axMeans.set_ylabel('T2-nobias intensity')                 
+        axMeans.legend(loc='upper right', numpoints = 1)  
+        
+        if complete:
+            axMeans.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', ecolor = 'r')
+            plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
+#                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+            # save txt files with means and stdvs !!
+            dataCort = open(corticalLayers + '%s_%s_CortLay%s_ROI_%s%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID), addedName), "w")
+#                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
+            dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
+    
+            for j in range(len(xCoords)):
+                dataCort.write(str(j + 1) + '\t' + str(xCoords[j]) + '\t' + str("%.4f" % means[j]) + '\t' + str("%.4f" % stdvs[j]) + '\n')    
+            dataCort.close()  
+            completeN += 1
+        else :
+            # now check, whether this profile is complete for 5 layers (II - VI)
+            if complete5Layers == False:
+                # this profile is incomplete even for 5 layers
+                print 'incomplete ID , even for 5 layers ', str(currID)
+                axMeans.errorbar(xCoords, means, stdvs, linestyle='None', marker='^', ecolor = 'r')
+                plt.savefig(corticalLayers + '%s_%s_incompleteCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))  
+                # do NOT save separate txt files, as the data is incomplete and can not be used for clustering
+                incompleteN += 1
+            else:   # this profile is incomplete for many points, but is complete for 5 layers
+                axMeans.errorbar(xCoords[1:], means[1:], stdvs[1:], linestyle='solid', marker='^', ecolor = 'r') # plot means and stdvs for layers II - VI
+                plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s_5Layers.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
+                # save txt files with means and stdvs !!
+                dataCort = open(corticalLayers + '%s_%s_CortLay%s_ROI_%s%s_5Layers.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID), addedName), "w")
+                dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
+        
+                for j in range(len(xCoords) - 1):
+                    dataCort.write(str(j + 2) + '\t' + str(xCoords[j + 1]) + '\t' + str("%.4f" % means[j + 1]) + '\t' + str("%.4f" % stdvs[j + 1]) + '\n')    
+                dataCort.close()  
+                complete5LayersN += 1                
+    
+
+
+#            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
+            # write out the same info, but sorted by sizes
+#            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
+            
+            ## now save the same plots but sorted by their avg gradients              
+#            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
+            
+
+        plt.clf()
+        plt.close()     
+     
            
-        
+    print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN 
+  
+    
+    
+    
+    
     
     
     
