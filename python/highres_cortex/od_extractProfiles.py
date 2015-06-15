@@ -375,10 +375,6 @@ if __name__ == '__main__':
     divGradnThresholds = [-0.2, 0.35]
     #divGradnThresholds = [-0.25, 0.35]
     #divGradnThresholds = [-0.5, 0.5] #just for test
-    # TODO! find real intervals!! May be even different for PT and Heschl!!
-#    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
-#    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.62, 0.72, 0.82, 0.91, 1.0]
-#    corticalIntervals = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.72, 0.82, 1.0]
 
 
 
@@ -467,7 +463,7 @@ if __name__ == '__main__':
         print 'heights of the cortical columns found heightMin = ', heightMin, ' heightMax = ', heightMax
         #heights = range(heightMin, heightMax + 1)
         # just for test: to see the influence of really large columns
-        heights = range(heightMin, heightMax + 5)
+        heights = range(heightMin, heightMax + 2)
         print ' ##################################################### heights = ', heights
        # using this info: calculate minimal cortical column sizes
         
@@ -639,21 +635,17 @@ if __name__ == '__main__':
                 currLine += '\t0'  
        
         # do not plot if it is zero
-        if len(currCoords) != 0:                                     
-
+        if len(currCoords) != 0:   
             data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
             data2i.write(headerLine + '\n')
             for j in range(len(currCoords)):
                 data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
             data2i.close()              
             
-            
         plt.clf()
         plt.close()     
-        
         currLine += '\n'
         dataS.write(currLine)
-        
     dataS.close()    
     
     
@@ -685,9 +677,6 @@ if __name__ == '__main__':
     if columnDiameter is not None:
         # write out the volume coloured according to the average divGradn Values        
         aims.write(volColouredByAvgDivGrads, divGradnClasses + '%s_%s_nobiasT2%s_divGradnColour%s.nii.gz' %(realPatientID, realSide, addedColumnsDiamName, strT))
-        #print 'forced exit'     #TODO: delete when not needed!
-        #sys.exit(0)
-
         # plot the histogram of column sizes
         sizes = result2[6]
         plt.hist(sizes, bins = 50)
@@ -799,8 +788,7 @@ if __name__ == '__main__':
 
                 if criterion:     
                     # get the ID of this column in the original data
-                    #print 'iDs =', iDs
-                    #print 'k = ', k
+                    #print 'iDs =', iDs, ' k = ', k
                     indexOfThisID = np.where(iDs == k)[0][0]
                     #print 'indexOfThisID ', indexOfThisID
                     currCoords = listOfCoords[indexOfThisID]
@@ -876,8 +864,7 @@ if __name__ == '__main__':
                         for z in range(len(listsOfCoordsForMaskVariousThr[j][t])):
                             s = str(listsOfColumnIDsForMaskVariousThr[j][t][z]) + '\t' + str(listsOfCoordsForMaskVariousThr[j][t][z]) + '\t' + str(listsOfValuesForMaskVariousThr[j][t][z]) + '\n'                   
                             f.write(s)        
-                        f.close()
-                        
+                        f.close()                        
             
             axAll.set_title('Profile in all maskROIs')
             axAll.set_xlabel('Cortical depth') 
@@ -896,8 +883,7 @@ if __name__ == '__main__':
             if numP != 0:
                 plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl), bbox_inches='tight')            
             plt.clf()
-            plt.close()    
-        
+            plt.close()            
         
         # plot the same but also: included and rejected regions, according to the div_gradn volume
         for t in range(len(minColumnSizes)):            

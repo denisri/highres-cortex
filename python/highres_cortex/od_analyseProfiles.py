@@ -64,17 +64,20 @@ if __name__ == '__main__':
     #realSide = 'L'
     columnDiameter = None
     
-    addedName = '_1PpL_test'        # 1 point per Layer
-    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.6, 0.8, 1.0]
 
-#    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-#    addedName = '_1PpDE'         # 1 point per depth entity
+#    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
+#    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.62, 0.72, 0.82, 0.91, 1.0]
+#    corticalIntervals = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.72, 0.82, 1.0]
+    #corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    #addedName = '_1PpDE'         # 1 point per depth entity
+    addedName = '_1PpL'        # 1 point per Layer
+    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.6, 0.8, 1.0]
 
     parser = OptionParser('Analyze profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
+    parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
     #parser.add_option('-t', dest='threshold', help='threshold to work with')
-    parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
     options, args = parser.parse_args(sys.argv)
     print options
@@ -154,9 +157,9 @@ if __name__ == '__main__':
         # iterate through these profiles, calculate means, stdv in layers, plot figures, save files
         # find profiles of these large columns: ad140157_L_profiles2_diam3_ROI_259.txt - find all profile files like this one
         currID = int(largeIDs[i])
-        print 'currID = ', currID
+        #print 'currID = ', currID
         profileFile = pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID))
-        print 'work with file  ', profileFile
+        #print 'work with file  ', profileFile
         currCoords, currValues  = np.loadtxt(profileFile, skiprows = 1, usecols = (1, 2), unpack=True)
         #print zip(depthCoord, value)
         
@@ -196,7 +199,7 @@ if __name__ == '__main__':
             means.append(np.mean(thisLayerValues))
             stdvs.append(np.std(thisLayerValues))
             xCoords.append((start + stop) / 2.0)            
-            print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
+            #print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
 
 
         # collected the data for all layers. now plot for this particular column  
@@ -222,7 +225,7 @@ if __name__ == '__main__':
             # now check, whether this profile is complete for 5 layers (II - VI)
             if complete5Layers == False:
                 # this profile is incomplete even for 5 layers
-                print 'incomplete ID , even for 5 layers ', str(currID)
+                #print 'incomplete ID , even for 5 layers ', str(currID)
                 axMeans.errorbar(xCoords, means, stdvs, linestyle='None', marker='^', ecolor = 'r')
                 plt.savefig(corticalLayers + '%s_%s_incompleteCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))  
                 # do NOT save separate txt files, as the data is incomplete and can not be used for clustering
@@ -237,9 +240,7 @@ if __name__ == '__main__':
                 for j in range(len(xCoords) - 1):
                     dataCort.write(str(j + 2) + '\t' + str(xCoords[j + 1]) + '\t' + str("%.4f" % means[j + 1]) + '\t' + str("%.4f" % stdvs[j + 1]) + '\n')    
                 dataCort.close()  
-                complete5LayersN += 1                
-    
-
+                complete5LayersN += 1    
 
 #            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
             # write out the same info, but sorted by sizes
@@ -248,54 +249,18 @@ if __name__ == '__main__':
             ## now save the same plots but sorted by their avg gradients              
 #            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
             
-
         plt.clf()
         plt.close()     
-     
-           
     print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN 
   
     
+######################################################## STATISTICAL ANALYSIS ####################################################################################
+
+# 1. Cluster the columns using vectors of their means and stdvs in the 6 'cortical layers'
+
     
     
-    
-    
-    
-    
-    
-    ## from the given profiles extract means and stdv 
-    ## read in the info file on the columns
-    #infoFileName = pathForFiles + '%s_%s_ColumnInfo%s_test.txt' %(realPatientID, realSide, addedColumnsDiamName)
-    ##crs = open(infoFileName, "r")
-    #columnsInfo = []
-    #columnID, size, avgDivGradn, maskROI_11, maskROI_21, toIgnore = np.loadtxt(infoFileName, delimiter='\t', unpack=True)
-    ## problem with NaN data
-    ## will need to exclude the data excluded in the profile extraction script
-    
-    
-    #print avgDivGradn
-    
-    #for columns in ( raw.strip().split() for raw in crs ): 
-        #numOfColumns = len(columns)
-        #print 'numOfColumns = ', numOfColumns
-        ##for i in range(numOfColumns):
-        #columnsInfo.append(columns[i])
-        ## print columns[0], '\t', columns[1], '\t', columns[2], '\t', columns[3], '\t', columns[4], '\t', columns[5]
-    #print columnsInfo
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+     
     
     
     
