@@ -183,6 +183,80 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         values = arrValue1[arrCoord1 != 0]
         divGradns = arrDivGradn1[arrCoord1 != 0]
         
+        
+        # TODO: delete later? 
+        # plot the hist of these values
+        #plt.hist(values, color = 'red')        # these are values in cortex + one voxel of CSF
+        #plt.show()
+        
+        # plot the values in the cortex area (without CSF voxels) ONLY:
+        columnsInCortexOnly = aims.read('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz')
+        arrColumnsInCortexOnly = np.asarray(columnsInCortexOnly)
+        
+        arrCoord1_InCortexOnly = arrCoord[arrColumnsInCortexOnly != 0]
+        
+        
+        arrValue1_InCortexOnly = arrValue[arrColumnsInCortexOnly != 0]
+       
+        coords = arrCoord1[arrCoord1 != 0]
+        values = arrValue1[arrCoord1 != 0]
+        
+        # TODO: try to take the mask, to erode it 1-2 times, and to compare histograms!
+        
+         
+
+
+
+        
+        
+        
+        
+        
+        pathToClassifWithBorders = '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_at140353_L_cut_noSulci_extended.nii.gz'
+        volGWborders = aims.read(pathToClassifWithBorders)
+        arrGWborders = np.array(volGWborders)
+        print np.unique(arrGWborders)
+        
+        
+        
+        arrCoord1_onlyCortex = arrCoord[arrGWborders == 100]
+        arrValue1_onlyCortex = arrValue[arrGWborders == 100]
+
+        
+        
+        
+       # arrGWborders1 = arrGWborders[arrGWborders == 100]
+        #valuesWithoutCSF = arrValue1[arrGWborders == 100]
+        #plt.hist(arrValue1_onlyCortex, color = 'green')        # these are values in cortex + one voxel of CSF
+        
+        
+        
+        plt.hist(values, alpha=0.8, label='WithCSF', facecolor='green')
+        plt.hist(arrValue1_onlyCortex, alpha=0.8, label='OnlyCortex', facecolor='red')
+        #plt.title('Main Plot Title',fontsize=25,horizontalalignment='right')
+        #plt.ylabel('Count',fontsize=20)
+        #plt.yticks(fontsize=15)
+        #plt.xlabel('X Axis Label',fontsize=20)
+        #plt.xticks(fontsize=15)
+        plt.legend()
+        plt.show()
+        
+        # TODO : why so many points??? TOO many!!! may unneeded points are taken?
+        
+
+
+
+        
+        sys.exit()
+        
+        arrValue1_onlyCortex = arrValue[arrGWborders == 100]
+        
+        
+        
+        
+        
+        
+        
         ids = np.where(arrCoord1 != 0)
         print len(ids), ' len(ids) ', len(coords), ' len(coords) '
         # got the ids. now need to get x, y coordinates

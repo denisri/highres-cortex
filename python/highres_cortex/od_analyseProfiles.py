@@ -53,7 +53,8 @@ import numpy as np
 import highres_cortex.od_cutOutRois
 from soma.aims import volumetools
 import matplotlib.pyplot as plt    
-    
+import math
+
 if __name__ == '__main__':
     
     healthyList = ['fg140290', 'af140169', 'ml140175', 'ac140159', 'md140208', 'at140353'] #, 'js140266', 'lg140146', 'he140338', 'cb140330']
@@ -133,6 +134,43 @@ if __name__ == '__main__':
     #else:
         #threshold = options.threshold  
         
+    # TODO: for test. maybe delete it later
+    # plot histograms for the intensities in CSF, cortex and WM
+    brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+    pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID) 
+    volGW = aims.read(pathToClassifFile)
+    arrGW = np.array(volGW)
+    print 'volGW ', pathToClassifFile
+    pathToClassifWithBorders = directory + '%s_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+    volGWborders = aims.read(pathToClassifWithBorders)
+    print 'volGWborders ', pathToClassifWithBorders
+    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID)
+    volT2 = aims.read(pathToNobiasT2_new)
+    arrT2 = np.array(volT2)
+    print 'volT2 ', pathToNobiasT2_new
+    # get the cortex in the mask!
+    volMask = aims.read(directory + '%s_T1inT2_ColumnsCutNew20It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realSide))
+    arrMask = np.array(volMask)
+    cortexValues = volT2[volGW == 100]
+    
+    
+    
+    # TODO: delete!
+    sys.exit(0)
+    
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -209,6 +247,7 @@ if __name__ == '__main__':
         axMeans.legend(loc='upper right', numpoints = 1)  
         
         if complete:
+            # plot the profile for all 6 cortical layers
             axMeans.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', ecolor = 'r')
             plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
 #                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
@@ -221,6 +260,11 @@ if __name__ == '__main__':
                 dataCort.write(str(j + 1) + '\t' + str(xCoords[j]) + '\t' + str("%.4f" % means[j]) + '\t' + str("%.4f" % stdvs[j]) + '\n')    
             dataCort.close()  
             completeN += 1
+            
+            # also plot the profile for the 5 cortical layers II - VI
+            axMeans.clear()
+            axMeans.errorbar(xCoords[1:], means[1:], stdvs[1:], linestyle='solid', marker='^', ecolor = 'r')
+            plt.savefig(corticalLayers + '%s_%s_5CortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
         else :
             # now check, whether this profile is complete for 5 layers (II - VI)
             if complete5Layers == False:
@@ -232,7 +276,7 @@ if __name__ == '__main__':
                 incompleteN += 1
             else:   # this profile is incomplete for many points, but is complete for 5 layers
                 axMeans.errorbar(xCoords[1:], means[1:], stdvs[1:], linestyle='solid', marker='^', ecolor = 'r') # plot means and stdvs for layers II - VI
-                plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s_5Layers.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
+                plt.savefig(corticalLayers + '%s_%s_5CortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
                 # save txt files with means and stdvs !!
                 dataCort = open(corticalLayers + '%s_%s_CortLay%s_ROI_%s%s_5Layers.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID), addedName), "w")
                 dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
