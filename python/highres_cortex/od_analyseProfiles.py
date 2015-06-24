@@ -54,6 +54,15 @@ import highres_cortex.od_cutOutRois
 from soma.aims import volumetools
 import matplotlib.pyplot as plt    
 import math
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.cluster import KMeans
+from sklearn import datasets
+from pylab import plot,show
+from numpy import vstack,array
+from numpy.random import rand
+from scipy.cluster.vq import kmeans,vq
 
 if __name__ == '__main__':
     
@@ -177,7 +186,15 @@ if __name__ == '__main__':
     print 'largeIDs = ', largeIDs
     completeN = 0
     incompleteN = 0
-    complete5LayersN = 0
+    complete5LayersN = 0    
+    
+    # create data structure for the collected data! the first column: ROI ID !!!!!!!!!!
+    arrProfiles6Layers = []
+    arrProfilesID6Layers = []
+    arrVar6Layers = []
+    arrProfiles5Layers = []
+    arrProfilesID5Layers = []
+    arrVar5Layers = []
     
     for i in range(len(largeIDs)):
 #    for i in range(1):
@@ -194,7 +211,6 @@ if __name__ == '__main__':
         axPoints = fig.add_subplot(1,2,1)
         axMeans = fig.add_subplot(1,2,2)
         axPoints.plot(currCoords, currValues, '.', c = 'b') #, label = 'ROI '+ str(maskROIids[j]))
-
         axPoints.set_title('Profile in ROI %s' %(str(currID)))
         axPoints.set_xlabel('Cortical depth') 
         axPoints.set_ylabel('T2-nobias intensity')                 
@@ -253,7 +269,15 @@ if __name__ == '__main__':
             # also plot the profile for the 5 cortical layers II - VI
             axMeans.clear()
             axMeans.errorbar(xCoords[1:], means[1:], stdvs[1:], linestyle='solid', marker='^', ecolor = 'r')
-            plt.savefig(corticalLayers + '%s_%s_5CortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
+            plt.savefig(corticalLayers + '%s_%s_5CortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))   
+                        
+            # add the infor from this profile to the data
+            arrProfilesID6Layers.append(currID)
+            arrProfiles6Layers.append(means)
+            arrProfilesID5Layers.append(currID)
+            arrProfiles5Layers.append(means[1:])  
+            arrVar6Layers.append(stdvs)   
+            arrVar5Layers.append(stdvs) 
         else :
             # now check, whether this profile is complete for 5 layers (II - VI)
             if complete5Layers == False:
@@ -274,7 +298,11 @@ if __name__ == '__main__':
                     dataCort.write(str(j + 2) + '\t' + str(xCoords[j + 1]) + '\t' + str("%.4f" % means[j + 1]) + '\t' + str("%.4f" % stdvs[j + 1]) + '\n')    
                 dataCort.close()  
                 complete5LayersN += 1    
-
+                
+                # save the data for analysis
+                arrProfilesID5Layers.append(currID)
+                arrProfiles5Layers.append(means[1:])
+                arrVar5Layers.append(stdvs[1:])
 #            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
             # write out the same info, but sorted by sizes
 #            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
@@ -289,7 +317,143 @@ if __name__ == '__main__':
     
 ######################################################## STATISTICAL ANALYSIS ####################################################################################
 
-# 1. Cluster the columns using vectors of their means and stdvs in the 6 'cortical layers'
+    # 1. Cluster the columns using vectors of their means and stdvs in the 6 'cortical layers'
+    print (arrProfiles5Layers[0:10][:])   
+    
+    ## data generation
+    #data = vstack((rand(150,2) + array([.5,.5]),rand(150,2)))
+
+    ## computing K-Means with K = 2 (2 clusters)
+    #centroids,_ = kmeans(data,2)
+    ## assign each sample to a cluster
+    #idx,_ = vq(data,centroids)
+
+    ## some plotting using numpy's logical indexing
+    #plot(data[idx==0,0],data[idx==0,1],'ob',
+        #data[idx==1,0],data[idx==1,1],'or')
+    #plot(centroids[:,0],centroids[:,1],'sg',markersize=8)
+    #show()
+
+
+    # data generation
+    data = arrProfiles6Layers
+    
+    # computing K-Means with K = 2 (2 clusters)
+    centroids,_ = kmeans(data, 2)
+    
+    # assign each sample to a cluster
+    idx,_ = vq(data,centroids)
+
+    # some plotting using numpy's logical indexing
+    plot(data[idx==0,0],data[idx==0,1],'ob',
+        data[idx==1,0],data[idx==1,1],'or')
+    plot(centroids[:,0],centroids[:,1],'sg',markersize=8)
+    show()
+
+    print 
+    
+    sys.exit()
+
+
+
+
+
+
+    # Gael Varoquaux
+    
+    np.random.seed(5)
+
+#    centers = [[1, 1], [-1, -1], [1, -1]]
+#    iris = datasets.load_iris()
+#    X = iris.data
+#    y = iris.target
+
+    #estimators = {'k_means_iris_3': KMeans(n_clusters=3),
+                #'k_means_iris_8': KMeans(n_clusters=8),
+                #'k_means_iris_bad_init': KMeans(n_clusters=3, n_init=1,
+                                                #init='random')}
+    estimators = {'k_means_2': KMeans(n_clusters = 2),
+                  'k_means_3': KMeans(n_clusters = 3),
+                  'k_means_4': KMeans(n_clusters = 4)}
+    
+    labelsVariousK = []
+    # take the initial volume with columns and colour it according to the labels
+    
+    
+    for name, est in estimators.items():
+        est.fit(arrProfiles6Layers)
+        labels = est.labels_
+        print labels
+        labelsVariousK.append(labels)
+        
+        # take the initial volume with columns and colour it according to the labels
+        volColumns = aims.read('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz')
+        arrColumns = np.array(volColumns, copy = False)
+        # compare the lengths
+        print len(labels)
+        print len(arrProfilesID6Layers)
+        
+        
+        for iD, newLabel in zip(arrProfilesID6Layers, labels):
+            print iD, len(arrColumns[arrColumns == iD]), 'replaced by ',  newLabel
+            arrColumns[arrColumns == iD] = newLabel
+        # save this new 'colouredVolume'
+        aims.write(volColumns, '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/corticalColumns_labeled_%s.nii.gz' %(name))
+        
+        
+        
+        
+      
+      
+      
+    fignum = 1
+    for name, est in estimators.items():
+        fig = plt.figure(fignum, figsize=(4, 3))
+        plt.clf()
+        ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
+
+        plt.cla()
+        est.fit(X)
+        labels = est.labels_
+
+        ax.scatter(X[:, 3], X[:, 0], X[:, 2], c=labels.astype(np.float))
+
+        ax.w_xaxis.set_ticklabels([])
+        ax.w_yaxis.set_ticklabels([])
+        ax.w_zaxis.set_ticklabels([])
+        ax.set_xlabel('Petal width')
+        ax.set_ylabel('Sepal length')
+        ax.set_zlabel('Petal length')
+        fignum = fignum + 1
+
+    # Plot the ground truth
+    fig = plt.figure(fignum, figsize=(4, 3))
+    plt.clf()
+    ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
+
+    plt.cla()
+
+    for name, label in [('Setosa', 0),
+                        ('Versicolour', 1),
+                        ('Virginica', 2)]:
+        ax.text3D(X[y == label, 3].mean(),
+                X[y == label, 0].mean() + 1.5,
+                X[y == label, 2].mean(), name,
+                horizontalalignment='center',
+                bbox=dict(alpha=.5, edgecolor='w', facecolor='w'))
+    # Reorder the labels to have colors matching the cluster results
+    y = np.choose(y, [1, 2, 0]).astype(np.float)
+    ax.scatter(X[:, 3], X[:, 0], X[:, 2], c=y)
+
+    ax.w_xaxis.set_ticklabels([])
+    ax.w_yaxis.set_ticklabels([])
+    ax.w_zaxis.set_ticklabels([])
+    ax.set_xlabel('Petal width')
+    ax.set_ylabel('Sepal length')
+    ax.set_zlabel('Petal length')
+    plt.show()
+
+
 
 
     
