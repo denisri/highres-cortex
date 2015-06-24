@@ -201,61 +201,28 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         coords = arrCoord1[arrCoord1 != 0]
         values = arrValue1[arrCoord1 != 0]
         
-        # TODO: try to take the mask, to erode it 1-2 times, and to compare histograms!
+        ############## don't need it! was already done before calling the function!        
+        # try to take the mask, to erode it 1-2 times, and to compare histograms!      
+        #pathToClassifWithBorders = '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_at140353_L_cut_noSulci_extended.nii.gz'
+        #volGWborders = aims.read(pathToClassifWithBorders)
+        #arrGWborders = np.array(volGWborders)
+        #print np.unique(arrGWborders)
         
-         
-
-
-
+        #arrCoord1_onlyCortex = arrCoord[arrGWborders == 100]
+        #arrValue1_onlyCortex = arrValue[arrGWborders == 100]
         
-        
-        
-        
-        
-        pathToClassifWithBorders = '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_at140353_L_cut_noSulci_extended.nii.gz'
-        volGWborders = aims.read(pathToClassifWithBorders)
-        arrGWborders = np.array(volGWborders)
-        print np.unique(arrGWborders)
-        
-        
-        
-        arrCoord1_onlyCortex = arrCoord[arrGWborders == 100]
-        arrValue1_onlyCortex = arrValue[arrGWborders == 100]
-
-        
-        
-        
-       # arrGWborders1 = arrGWborders[arrGWborders == 100]
-        #valuesWithoutCSF = arrValue1[arrGWborders == 100]
-        #plt.hist(arrValue1_onlyCortex, color = 'green')        # these are values in cortex + one voxel of CSF
-        
-        
-        
-        plt.hist(values, alpha=0.8, label='WithCSF', facecolor='green')
-        plt.hist(arrValue1_onlyCortex, alpha=0.8, label='OnlyCortex', facecolor='red')
-        #plt.title('Main Plot Title',fontsize=25,horizontalalignment='right')
-        #plt.ylabel('Count',fontsize=20)
-        #plt.yticks(fontsize=15)
-        #plt.xlabel('X Axis Label',fontsize=20)
-        #plt.xticks(fontsize=15)
-        plt.legend()
-        plt.show()
-        
-        # TODO : why so many points??? TOO many!!! may unneeded points are taken?
-        
-
-
-
-        
-        sys.exit()
-        
-        arrValue1_onlyCortex = arrValue[arrGWborders == 100]
-        
-        
-        
-        
-        
-        
+       ## arrGWborders1 = arrGWborders[arrGWborders == 100]
+        ##valuesWithoutCSF = arrValue1[arrGWborders == 100]
+        ##plt.hist(arrValue1_onlyCortex, color = 'green')        # these are values in cortex + one voxel of CSF
+        #plt.hist(values, alpha=0.8, label='WithCSF', facecolor='green')
+        #plt.hist(arrValue1_onlyCortex, alpha=0.8, label='OnlyCortex', facecolor='red')
+        ##plt.title('Main Plot Title',fontsize=25,horizontalalignment='right')
+        ##plt.ylabel('Count',fontsize=20)
+        ##plt.yticks(fontsize=15)
+        ##plt.xlabel('X Axis Label',fontsize=20)
+        ##plt.xticks(fontsize=15)
+        #plt.legend()
+        #plt.show()
         
         ids = np.where(arrCoord1 != 0)
         print len(ids), ' len(ids) ', len(coords), ' len(coords) '
@@ -375,8 +342,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
                         numbers.append(len(w))                
                     print 'Column with ID ', roiIds[i], ' is in both regions. % in mask ROIs ', ' is ', numbers
                     
-                    ## TODO! analyze these numbers
-                    # TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
+                    # analyze these numbers! TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
                     # if one of the rois contains 10 times more voxels than all the rest ROIs, than we can accept this column and say that it belongs to this roi
                     # e.g. if column has 1200 voxels in ROI 11 and 13 voxels in ROI 21  - should it be dismissed??
                     
@@ -387,8 +353,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
                         maxId = numbers.index(maxN) # maxId gives the ROI in the mask to which this column should be attributed
                         print 'ratio = ', ratio, '  maxId = ', maxId, ' mask ROI ', roisMask[maxId]
                         
-                        # do not put onto ignore list!
-                        # TODO! need to delete this column id from the lists of other mask ROIs
+                        # do not put onto ignore list! delete this column id from the lists of other mask ROIs
                         for k in range(len(roisMask)):
                             if roisMask[k] != roisMask[maxId]:
                                 # for the case if there are 3 or more regions: need to check whether to delete from the third region
@@ -436,6 +401,7 @@ if __name__ == '__main__':
     realSide = 'L'
     columnDiameter = None
     workOnLaptop = False
+    reExtractProfilesCutBorders = False
     pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
     minColumnSize = 10 # depends on the diameter
@@ -488,8 +454,8 @@ if __name__ == '__main__':
 	    workOnLaptop = options.workOnLaptop      
 	    # if true, then processes are run on the laptop. Change locations of neurospin DBs
 	    pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
-	    pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
-  
+	    pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')        
+        
     pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
     pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
     
@@ -568,15 +534,25 @@ if __name__ == '__main__':
             f.close()
             sys.exit(0)
             f.close()
-
+            
         volColumns = aims.read(volsColumns[0])  
-        print 'volColumns = ', volsColumns[0]
-        
+        print 'volColumns = ', volsColumns[0]        
         # read in the div_gradn file (for measuring the flatness of the resoective column region)
         volDivGradn = aims.read(directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide))          
         print 'volDivGradn = ', directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
         #result = extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volMask)
         # repeat for the NEW nobias images!
+        
+        
+        # Do NOT need to re-extract the profiles in the merged-randomized volume, which was cut!!! (so that regions 50 and 150, corresponding to borders, were eliminated, but write this volume out)
+        print 'cut borders from the volume ', volsColumns[0]
+        volClassifNoBorders = directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+        print 'using the original file ', volClassifNoBorders
+        # cut the borders
+        subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '0', '-v', '0', '-i', volsColumns[0], '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
+        
+        subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide), '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
+              
         result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, minColumnSize, volMask)   
     
     # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
@@ -680,7 +656,7 @@ if __name__ == '__main__':
         sys.exit(0)
     
     for i in range(len(iDs)):
-        print '------------------ i = ', i, ' work with id', iDs[i]
+        #print '------------------ i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
         
@@ -721,8 +697,7 @@ if __name__ == '__main__':
         currLine += '\n'
         dataS.write(currLine)
     dataS.close()    
-    
-    
+        
     
     # plot the ROIs from the mask (columns of any size) on one plot
     roiNames = ''

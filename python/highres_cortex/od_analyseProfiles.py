@@ -136,43 +136,32 @@ if __name__ == '__main__':
         
     # TODO: for test. maybe delete it later
     # plot histograms for the intensities in CSF, cortex and WM
-    brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
-    pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID) 
-    volGW = aims.read(pathToClassifFile)
-    arrGW = np.array(volGW)
-    print 'volGW ', pathToClassifFile
+    pathToClassifNoBorders = directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+    volGWNoborders = aims.read(pathToClassifNoBorders)
+    arrGWNoborders = np.array(volGWNoborders)
     pathToClassifWithBorders = directory + '%s_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
     volGWborders = aims.read(pathToClassifWithBorders)
-    print 'volGWborders ', pathToClassifWithBorders
+    arrGWborders = np.array(volGWborders)
     pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID)
     volT2 = aims.read(pathToNobiasT2_new)
     arrT2 = np.array(volT2)
-    print 'volT2 ', pathToNobiasT2_new
-    # get the cortex in the mask!
-    volMask = aims.read(directory + '%s_T1inT2_ColumnsCutNew20It/voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realPatientID, realSide))
-    arrMask = np.array(volMask)
-    cortexValues = volT2[volGW == 100]
     
+    arr150 = arrT2[arrGWborders == 150]
+    arr50 = arrT2[arrGWborders == 50]
+    arr100 = arrT2[arrGWborders == 100]
+    arr200 = arrT2[arrGWborders == 200]    
     
-    
-    # TODO: delete!
-    sys.exit(0)
-    
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    plt.hist(arr100, label = '100 (cortex)', alpha = 0.3)
+    plt.hist(arr150, label = '150 (border to WM)', alpha = 0.7)
+    plt.hist(arr50, label = '50 (border to CSF)', alpha = 0.7)
+    plt.title('Histogram of intensities')   # subplot 211 title
+    plt.xlabel('T2 nobias intensities')
+    plt.ylabel('Number of voxels')
+    plt.legend(loc='upper right')
+    #plt.show()
+    plt.savefig(directory + '%s_%s_histOfT2nobiasIntensities.png' %(realPatientID, realSide))    
+    plt.clf()
+    plt.close()
         
     # read in the columns info file
     infoFileName = pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName)
@@ -180,7 +169,7 @@ if __name__ == '__main__':
     print zip(columnID, size)
     
     # calculatethe size threshold for the columns
-    sizeThreshold = np.round(columnDiameter * columnDiameter * 4.0 / 4.0 * np.pi * 4.0 / 3.0) #(volume of a cylinder, diameter is given, resolution 0.5, height - 2mm minimum, and divided by 3 for conical cases, or too narrow cases)
+    sizeThreshold = np.round(columnDiameter * columnDiameter * 4.0 / 4.0 * np.pi * 4.0 / 4.0) #(volume of a cylinder, diameter is given, resolution 0.5, height - 2mm minimum, and divided by 4 for conical cases, or too narrow cases)
     print 'sizeThreshold = ', sizeThreshold
     
     # find columns larger than this threshold
@@ -301,6 +290,7 @@ if __name__ == '__main__':
 ######################################################## STATISTICAL ANALYSIS ####################################################################################
 
 # 1. Cluster the columns using vectors of their means and stdvs in the 6 'cortical layers'
+
 
     
     
