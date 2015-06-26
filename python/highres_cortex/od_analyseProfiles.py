@@ -63,6 +63,9 @@ from pylab import plot,show
 from numpy import vstack,array
 from numpy.random import rand
 from scipy.cluster.vq import kmeans,vq
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import pairwise_distances
+
 
 if __name__ == '__main__':
     
@@ -73,7 +76,8 @@ if __name__ == '__main__':
     threshold = None
     #realSide = 'L'
     columnDiameter = None
-    
+    workOnLaptop = False
+
 
 #    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
 #    corticalIntervals = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.62, 0.72, 0.82, 0.91, 1.0]
@@ -89,6 +93,7 @@ if __name__ == '__main__':
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
     #parser.add_option('-t', dest='threshold', help='threshold to work with')
     parser.add_option('-d', dest='directory', help='directory')
+    parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -110,8 +115,17 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
         realSide = options.realSide  
-        
-        
+      
+    pathToimagesInNewT2Space_LinearCropped10 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/'
+	
+    if options.workOnLaptop is not None:
+	workOnLaptop = options.workOnLaptop      
+	# if true, then processes are run on the laptop. Change locations of neurospin DBs
+	# TODO! check! which one to use!
+	#directory = directory.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')        
+	directory = directory.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')  
+	pathToimagesInNewT2Space_LinearCropped10 = pathToimagesInNewT2Space_LinearCropped10.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+
     addedColumnsDiamName = ''
     pathForFiles = directory
     
@@ -151,7 +165,7 @@ if __name__ == '__main__':
     pathToClassifWithBorders = directory + '%s_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
     volGWborders = aims.read(pathToClassifWithBorders)
     arrGWborders = np.array(volGWborders)
-    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID)
+    pathToNobiasT2_new = pathToimagesInNewT2Space_LinearCropped10 +  'T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID)
     volT2 = aims.read(pathToNobiasT2_new)
     arrT2 = np.array(volT2)
     
@@ -338,21 +352,21 @@ if __name__ == '__main__':
     # data generation
     data = arrProfiles6Layers
     
-    # computing K-Means with K = 2 (2 clusters)
-    centroids,_ = kmeans(data, 2)
+    ## computing K-Means with K = 2 (2 clusters)
+    #centroids,_ = kmeans(data, 2)
     
-    # assign each sample to a cluster
-    idx,_ = vq(data,centroids)
+    ## assign each sample to a cluster
+    #idx,_ = vq(data,centroids)
 
-    # some plotting using numpy's logical indexing
-    plot(data[idx==0,0],data[idx==0,1],'ob',
-        data[idx==1,0],data[idx==1,1],'or')
-    plot(centroids[:,0],centroids[:,1],'sg',markersize=8)
-    show()
+    ## some plotting using numpy's logical indexing
+    #plot(data[idx==0,0],data[idx==0,1],'ob',
+        #data[idx==1,0],data[idx==1,1],'or')
+    #plot(centroids[:,0],centroids[:,1],'sg',markersize=8)
+    #show()
 
-    print 
+    #print 
     
-    sys.exit()
+    #sys.exit()
 
 
 
@@ -372,37 +386,70 @@ if __name__ == '__main__':
                 #'k_means_iris_8': KMeans(n_clusters=8),
                 #'k_means_iris_bad_init': KMeans(n_clusters=3, n_init=1,
                                                 #init='random')}
-    estimators = {'k_means_2': KMeans(n_clusters = 2),
-                  'k_means_3': KMeans(n_clusters = 3),
-                  'k_means_4': KMeans(n_clusters = 4)}
+    estimators = {
+		  #'k_means_2': KMeans(n_clusters = 2,),
+                  #'k_means_3': KMeans(n_clusters = 3,),
+                  #'k_means_4': KMeans(n_clusters = 4,),
+                  'agglomerative_2_eucl_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "euclidean"),
+                  'agglomerative_3_eucl_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "euclidean"),
+		  'agglomerative_2_cityblock_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "cityblock"),
+		  'agglomerative_3_cityblock_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "cityblock")
+                  }
+    testName = ''
+    #testName = 'initKMeans'
     
+    
+    #for index, metric in enumerate(["cosine", "euclidean", "cityblock"]):
+    #model = AgglomerativeClustering(n_clusters=n_clusters,
+                                    #linkage="average", affinity=metric)
+    #model.fit(X)
+    
+    
+   
     labelsVariousK = []
     # take the initial volume with columns and colour it according to the labels
-    
+    inertiaVariousK = []
     
     for name, est in estimators.items():
+	print 'start model ', name
         est.fit(arrProfiles6Layers)
         labels = est.labels_
         print labels
         labelsVariousK.append(labels)
+        #inertia = est.inertia_
+        #inertiaVariousK.append(inertia)
         
         # take the initial volume with columns and colour it according to the labels
-        volColumns = aims.read('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz')
+        volColumns = aims.read(directory + '/%s_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz' %(realPatientID))
         arrColumns = np.array(volColumns, copy = False)
+        maxID = np.max(arrColumns)
         # compare the lengths
-        print len(labels)
-        print len(arrProfilesID6Layers)
+        print len(labels), len(arrProfilesID6Layers)
+        print 'num of unique labels ', len(np.unique(arrColumns))
         
+        # colour the initial columns volume into labels, and zero
+        # to avoid the same colours:
+        labelsUpdated = [((i + 1) * 10 + maxID) for i in labels]        
         
-        for iD, newLabel in zip(arrProfilesID6Layers, labels):
-            print iD, len(arrColumns[arrColumns == iD]), 'replaced by ',  newLabel
-            arrColumns[arrColumns == iD] = newLabel
-        # save this new 'colouredVolume'
-        aims.write(volColumns, '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/corticalColumns_labeled_%s.nii.gz' %(name))
-        
-        
-        
-        
+        for iD, newLabel, newLabelUpdated in zip(arrProfilesID6Layers, labels, labelsUpdated):
+	    #numToReplace = len(np.where(arrColumns == iD)[0])
+            #print iD, len(arrColumns[arrColumns == iD]), 'replaced by ',  newLabel, ' newLabelUpdated ', newLabelUpdated, ' numOfPoints ', numToReplace
+            arrColumns[arrColumns == iD] = newLabelUpdated
+            #print 'num of unique labels ', len(np.unique(arrColumns))
+            
+        # colour all columns that have not been labeled as zero
+        arrColumns[arrColumns <= maxID] = 0        
+        print 'num of unique labels ', len(np.unique(arrColumns))
+        # save this new 'colouredVolume'        
+        aims.write(volColumns, directory +  '%s_T1inT2_ColumnsCutNew20It/corticalColumns_labeled_%s%s.nii.gz' %(realPatientID, name, testName))        
+    
+    
+    print labelsVariousK
+    #print inertiaVariousK
+    #[401337.82453829556, 306421.28899320849, 268000.21592927747]
+    
+    
+    sys.exit()   
       
       
       
