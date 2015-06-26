@@ -69,7 +69,7 @@ from numpy.random import rand
 from scipy.cluster.vq import kmeans,vq
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import pairwise_distances
-
+from sklearn import preprocessing
 
 if __name__ == '__main__':
     
@@ -353,8 +353,17 @@ if __name__ == '__main__':
     #show()
 
 
-    # data generation
-    data = arrProfiles6Layers
+      
+    # data scaling TODO!
+    # scale the data 
+    data_scaled = preprocessing.scale(data)
+    
+    #print zip(data, data_scaled)
+    #sys.exit()
+    
+    
+    # TODO! try data normalization?
+    
     
     ## computing K-Means with K = 2 (2 clusters)
     #centroids,_ = kmeans(data, 2)
@@ -391,15 +400,26 @@ if __name__ == '__main__':
                 #'k_means_iris_bad_init': KMeans(n_clusters=3, n_init=1,
                                                 #init='random')}
     estimators = {
-		  #'k_means_2': KMeans(n_clusters = 2,),
-                  #'k_means_3': KMeans(n_clusters = 3,),
-                  #'k_means_4': KMeans(n_clusters = 4,),
-                  'agglomerative_2_eucl_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "euclidean"),
-                  'agglomerative_3_eucl_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "euclidean"),
-		  'agglomerative_2_cityblock_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "cityblock"),
-		  'agglomerative_3_cityblock_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "cityblock")
+		  'k_means_2': KMeans(n_clusters = 2),
+                  'k_means_3': KMeans(n_clusters = 3),
+                  'k_means_4': KMeans(n_clusters = 4)
+                  #'agglomerative_2_eucl_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "euclidean"),
+                  #'agglomerative_3_eucl_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "euclidean"),
+		  #'agglomerative_2_cityblock_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "cityblock"),
+		  #'agglomerative_3_cityblock_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "cityblock")
                   }
-    testName = ''
+    
+    # options!    
+    
+    ## 1. not scaled 
+    #testName = ''
+    #dataToUse = arrProfiles6Layers
+    
+    #2. scaled data
+    testName = '_dataScaled'
+    dataToUse = data_scaled
+    
+    
     #testName = 'initKMeans'
     
     
@@ -416,7 +436,8 @@ if __name__ == '__main__':
     
     for name, est in estimators.items():
 	print 'start model ', name
-        est.fit(arrProfiles6Layers)
+        #est.fit(arrProfiles6Layers)
+        est.fit(dataToUse)
         labels = est.labels_
         print labels
         labelsVariousK.append(labels)
@@ -433,7 +454,8 @@ if __name__ == '__main__':
         
         # colour the initial columns volume into labels, and zero
         # to avoid the same colours:
-        labelsUpdated = [((i + 1) * 10 + maxID) for i in labels]        
+        labelsUpdated = [((i + 1) * 10 + maxID) for i in labels]       
+        print zip(arrProfilesID6Layers, labels, labelsUpdated)
         
         for iD, newLabel, newLabelUpdated in zip(arrProfilesID6Layers, labels, labelsUpdated):
 	    #numToReplace = len(np.where(arrColumns == iD)[0])

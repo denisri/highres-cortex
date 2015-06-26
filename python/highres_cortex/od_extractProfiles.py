@@ -124,7 +124,7 @@ def extractProfiles(volCoord, volValue, volMask = None):
     
 
     
-def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrThr, minColumnSize, volMask = None):
+def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrThr, volMask = None):
     """
     this function takes 2 volumes, one with values (T2) and another with corresponding coordinates (cortex
     depth measure from Yann's scripts.) It also takes a volume with "cortical columns" and will extract 
@@ -503,19 +503,20 @@ if __name__ == '__main__':
         print 'heights of the cortical columns found heightMin = ', heightMin, ' heightMax = ', heightMax
         #heights = range(heightMin, heightMax + 1)
         # just for test: to see the influence of really large columns
-        heights = range(heightMin, heightMax + 2)
+        heights = range(heightMin - 1, heightMax + 2)
         print ' ##################################################### heights = ', heights
        # using this info: calculate minimal cortical column sizes
         
-        # average size         
+        # average size.     
         minColumnSize = int(np.round(columnDiameter * columnDiameter / voxelSizeAvg / voxelSizeAvg / 4 * np.pi * np.average(heights))) 
         print '##################################################### calculated the avgColumnSize = ', minColumnSize
 
         # a list of sizes        
         minColumnSizes = [int(k * columnDiameter * columnDiameter / voxelSizeAvg / voxelSizeAvg / 4 * np.pi) for k in heights]
-        print 'calculated a range of possible column sizes: '
-        print minColumnSizes
-        
+        # modified! Consider narrow columns, or conical ones! Divide by a factor!     
+        minColumnSizes = [int(np.min(minColumnSizes) / 4.0), int(np.min(minColumnSizes) / 2.0), int(np.min(minColumnSizes) / 1.5)] + minColumnSizes
+        print 'new list of column sizes Consider narrow columns, or conical one ', minColumnSizes
+                
         # start the processing for columns
         print '******************* columns diameter was given, then extract profiles in the columns ***************************'    
         # read in the columns file
@@ -540,7 +541,7 @@ if __name__ == '__main__':
         # read in the div_gradn file (for measuring the flatness of the resoective column region)
         volDivGradn = aims.read(directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide))          
         print 'volDivGradn = ', directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
-        #result = extractProfilesInColumns(volCoord, volValue, volColumns, minColumnSize, volMask)
+        #result = extractProfilesInColumns(volCoord, volValue, volColumns, volMask)
         # repeat for the NEW nobias images!
         
         
@@ -553,7 +554,7 @@ if __name__ == '__main__':
         
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide), '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
               
-        result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, minColumnSize, volMask)   
+        result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, volMask)   
     
     # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
     #coordinates = result[0]
@@ -746,10 +747,10 @@ if __name__ == '__main__':
         plt.clf()
         plt.close()
         
-        listsOfCoordsForLargeColumns = [[] for x in range(len(heights))]
-        listsOfValuesForLargeColumns = [[] for x in range(len(heights))] 
-        listsOfIDsForLargeColumns = [[] for x in range(len(heights))] 
-        listsOfNumbersLargeColumns = [0] * len(heights)
+        listsOfCoordsForLargeColumns = [[] for x in range(len(minColumnSizes))]
+        listsOfValuesForLargeColumns = [[] for x in range(len(minColumnSizes))] 
+        listsOfIDsForLargeColumns = [[] for x in range(len(minColumnSizes))] 
+        listsOfNumbersLargeColumns = [0] * len(minColumnSizes)
         for i in range(len(iDs)):
             currCoords = listOfCoords[i]
             currValues = listOfValues[i]
