@@ -41,8 +41,12 @@
 # this function calculate statistics from the profiles 
 
 
-# example how to run this file:
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotHealthy_DyslexicProfiles.py -c 5 -t 314 -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/
+# example how to run this file on a laptop:
+# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_analyseProfiles.py -p at140353 -s L -c 3 -d /volatile/od243208/neurospin/testBatchColumnsExtrProfiles/at140353/ -l
+
+# on a local machine:
+# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_analyseProfiles.py -p at140353 -s L -c 3 -d /volatile/od243208/neurospin/testBatchColumnsExtrProfiles/at140353/
+
 import random
 from soma import aims, aimsalgo
 import subprocess
