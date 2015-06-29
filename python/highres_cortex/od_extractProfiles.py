@@ -163,7 +163,8 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
     listOfSeparateValuesMask = []
     listOfROIsInMask = []
     listOfSizes = []
-    
+    listOfSeparateAVGCoords = []        # AVG coordinates of individual columns (to be used in clustering)
+
    
     if volMask is not None:
         mask = np.asarray(volMask)    
@@ -190,17 +191,17 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         #plt.show()
         
         # plot the values in the cortex area (without CSF voxels) ONLY:
-        columnsInCortexOnly = aims.read('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz')
-        arrColumnsInCortexOnly = np.asarray(columnsInCortexOnly)
+        #columnsInCortexOnly = aims.read('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz')
+        #arrColumnsInCortexOnly = np.asarray(columnsInCortexOnly)
         
-        arrCoord1_InCortexOnly = arrCoord[arrColumnsInCortexOnly != 0]
+        #arrCoord1_InCortexOnly = arrCoord[arrColumnsInCortexOnly != 0]
         
         
-        arrValue1_InCortexOnly = arrValue[arrColumnsInCortexOnly != 0]
+        #arrValue1_InCortexOnly = arrValue[arrColumnsInCortexOnly != 0]
        
         coords = arrCoord1[arrCoord1 != 0]
         values = arrValue1[arrCoord1 != 0]
-        
+                
         ############## don't need it! was already done before calling the function!        
         # try to take the mask, to erode it 1-2 times, and to compare histograms!      
         #pathToClassifWithBorders = '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_at140353_L_cut_noSulci_extended.nii.gz'
@@ -269,6 +270,21 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
             listOfSizes.append(len(coordsi))
             listOfAvgDivGradn.append(avgDiv)
             
+            
+            # TODO! get AVG X, Y coordinates per column (might use it for clustering)
+            #coordsThisROI = np.where(arrCoord1i != 0)
+            coordsThisROI = np.where(arrColumns == i)   # coordinates in 'voxels'. need to transform into mm!
+            #print 'coordsThisROI[:] = ', coordsThisROI[:]
+            #print 'coordsThisROI[0] = ', coordsThisROI[0]
+            xCoords, yCoords, zCoords, tCoords = np.where(arrColumns == i)
+            meanROIVoxelCoords = [np.mean(xCoords), np.mean(yCoords), np.mean(zCoords)]
+            #print 'xCoords ', xCoords
+            #print 'yCoords ', yCoords
+            #print 'zCoords ', zCoords
+            #print 'ROI ', i, meanROIVoxelCoords, ' size = ', len(xCoords)
+            listOfSeparateAVGCoords.append(meanROIVoxelCoords)
+
+            #sys.exit()
                    
             # TODO: delete it later!!! colour the initial image into 3 colours:
             # if avg < - 0.1 blue ,  if 0.1 >= avg >= - 0.1 yellow,   if avg > 0.1 red     
@@ -303,6 +319,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
                 counters[2] += 1
                 countVoxels[2] += len(coordsi)
                 listOfAvgDivGradnCateg.append(30)
+
         # save this new colouring scheme
         newVol = aims.Volume(arrColouredVol)
         #print newVol.header()
@@ -390,6 +407,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
     res.append(listOfAvgDivGradn)
     res.append(volColoured)
     res.append(listOfAvgDivGradnCateg)
+    res.append(listOfSeparateAVGCoords)
     return(res)       
     
 
@@ -607,6 +625,7 @@ if __name__ == '__main__':
     listOfAvgDivGrads = result2[7]
     volColouredByAvgDivGrads = result2[8]
     listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
+    listOfAvgVoxelCoords = result2[10]
 
     addedColumnsDiamName = ''
     pathForFiles = directory
@@ -626,7 +645,7 @@ if __name__ == '__main__':
     maskArray = np.asarray(volMask)
     maskROIids = np.unique(maskArray[np.where(maskArray > 0)])            
     dataS = open(pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
-    headerInfo = '\tColumnID\tSize\tAvgDivGradn'
+    headerInfo = '\tColumnID\tSize\tAvgX\tAvgY\tAvgZ\tAvgDivGradn'
     
     # complete the header with the mask ROI info. If columnDiameter was given
     if columnDiameter is not None:        
@@ -660,12 +679,13 @@ if __name__ == '__main__':
         #print '------------------ i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
+        currAvgVoxelCoords = listOfAvgVoxelCoords[i]
         
         # get the info on the gradient
         currGradn = listOfAvgDivGrads[i]
         strCurrGradn = "%.3f" % currGradn
-        strCurrGradnStr = str(strCurrGradn).replace('.','')   
-        currLine = '\t%s\t%s\t%s' %(str(iDs[i]), len(currCoords), strCurrGradn)
+        strCurrGradnStr = str(strCurrGradn).replace('.','')           
+        currLine = '\t%s\t%s\t%s\t%s\t%s\t%s' %(str(iDs[i]), len(currCoords), str("%.3f" % currAvgVoxelCoords[0]), str("%.3f" % currAvgVoxelCoords[1]), str("%.3f" % currAvgVoxelCoords[2]), strCurrGradn)
         # add info on Mask ROIs. if diameter was given
         if columnDiameter is not None:
             for j in range(len(maskROIids)):

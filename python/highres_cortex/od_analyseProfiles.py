@@ -145,6 +145,7 @@ if __name__ == '__main__':
     divGradnSorted = pathForFiles + 'sortedByDivGradn/'
     divGradnClasses = directory + 'divGradnClasses/'
     corticalLayers = pathForFiles + 'corticalLayers/'
+    classification = pathForFiles + 'classification/'
 
     if not os.path.exists(sizeSorted):
         os.makedirs(sizeSorted)
@@ -154,6 +155,8 @@ if __name__ == '__main__':
         os.makedirs(divGradnClasses)
     if not os.path.exists(corticalLayers):
         os.makedirs(corticalLayers)
+    if not os.path.exists(classification):
+        os.makedirs(classification)
 
     #if options.threshold is None:
         #print >> sys.stderr, 'New: exit. no threshold given'
@@ -172,7 +175,12 @@ if __name__ == '__main__':
     pathToNobiasT2_new = pathToimagesInNewT2Space_LinearCropped10 +  'T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID)
     volT2 = aims.read(pathToNobiasT2_new)
     arrT2 = np.array(volT2)
-    
+    statFileName = classification + "statFile_analyzeProf_%s_%s.txt" %(realPatientID, realSide)
+    f = open(statFileName, "w")
+    f.write('pathToClassifNoBorders\t' + directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide) + '\n')
+    f.write('pathToClassifWithBorders\t' + directory + '%s_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide) + '\n')
+    f.write('pathToNobiasT2_new\t' + pathToimagesInNewT2Space_LinearCropped10 +  'T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID) + '\n')    
+
     arr150 = arrT2[arrGWborders == 150]
     arr50 = arrT2[arrGWborders == 50]
     arr100 = arrT2[arrGWborders == 100]
@@ -198,10 +206,12 @@ if __name__ == '__main__':
     # calculatethe size threshold for the columns
     sizeThreshold = np.round(columnDiameter * columnDiameter * 4.0 / 4.0 * np.pi * 4.0 / 4.0) #(volume of a cylinder, diameter is given, resolution 0.5, height - 2mm minimum, and divided by 4 for conical cases, or too narrow cases)
     print 'sizeThreshold = ', sizeThreshold
+    f.write('sizeThreshold\t' + str(sizeThreshold) + '\n')    
     
     # find columns larger than this threshold
     largeIDs = columnID[np.where(size >= sizeThreshold)]
     print 'largeIDs = ', largeIDs
+    f.write('largeIDs\t' + str(largeIDs) + '\n') 
     completeN = 0
     incompleteN = 0
     complete5LayersN = 0    
@@ -210,6 +220,8 @@ if __name__ == '__main__':
     arrProfiles6Layers = []
     arrProfilesID6Layers = []
     arrVar6Layers = []
+    arrFeatures6Layers = []
+    
     arrProfiles5Layers = []
     arrProfilesID5Layers = []
     arrVar5Layers = []
@@ -224,6 +236,9 @@ if __name__ == '__main__':
         #print 'work with file  ', profileFile
         currCoords, currValues  = np.loadtxt(profileFile, skiprows = 1, usecols = (1, 2), unpack=True)
         #print zip(depthCoord, value)
+        
+        # TODO! get X,Y coordinates of these points! and add them to the 'feature vectors'
+        
         
         fig = plt.figure(figsize=(2 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
         axPoints = fig.add_subplot(1,2,1)
@@ -292,10 +307,30 @@ if __name__ == '__main__':
             # add the infor from this profile to the data
             arrProfilesID6Layers.append(currID)
             arrProfiles6Layers.append(means)
+            arrVar6Layers.append(stdvs)   
+            # for 5 layers
             arrProfilesID5Layers.append(currID)
             arrProfiles5Layers.append(means[1:])  
-            arrVar6Layers.append(stdvs)   
-            arrVar5Layers.append(stdvs) 
+            arrVar5Layers.append(stdvs[1:]) 
+            
+            
+            # create 'full' feature vectors, including profiles, avg coordinates of columns, sizes, avgDivGrads....
+            # for 6 layers
+            currFeatureVector = []
+            currFeatureVector.extend(means)
+            currFeatureVector.extend(stdvs)
+            currFeatureVector.extend(len(currCoords))
+            # TODO! currFeatureVector.extend(          add  avg voxel coords  -> mm          )
+            # TODO! currFeatureVector.extend(          add  avg div gradn          )
+
+            arrFeatures6Layers.append(currFeatureVector)
+            
+            # TODO later: PCA, correlation analysis! cluster using these full feature vectors 
+            
+            # TODO: for 5 layers!!!!!!!!!!!
+            
+            
+            
         else :
             # now check, whether this profile is complete for 5 layers (II - VI)
             if complete5Layers == False:
@@ -331,7 +366,8 @@ if __name__ == '__main__':
         plt.clf()
         plt.close()     
     print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN 
-  
+    f.write('arrProfilesID6Layers\t' + str(arrProfilesID6Layers) + '\n') 
+
     
 ######################################################## STATISTICAL ANALYSIS ####################################################################################
 
@@ -352,15 +388,18 @@ if __name__ == '__main__':
     #plot(centroids[:,0],centroids[:,1],'sg',markersize=8)
     #show()
 
-
-      
+    # work with 5 or 6 layers?
+    data = []
+    numOfLayersToUse = 6
+    if numOfLayersToUse == 6:
+        data = arrProfiles6Layers
+    elif numOfLayersToUse == 5:
+        data = arrProfiles5Layers
+    
     # data scaling TODO!
-    # scale the data 
     data_scaled = preprocessing.scale(data)
     
-    #print zip(data, data_scaled)
-    #sys.exit()
-    
+    #print zip(data, data_scaled)    
     
     # TODO! try data normalization?
     
@@ -378,9 +417,6 @@ if __name__ == '__main__':
     #show()
 
     #print 
-    
-    #sys.exit()
-
 
 
 
@@ -411,18 +447,21 @@ if __name__ == '__main__':
     
     # options!    
     
-    ## 1. not scaled 
-    #testName = ''
-    #dataToUse = arrProfiles6Layers
+    # 1. not scaled 
+    testName = '_%d' %(numOfLayersToUse)
+    dataToUse = data
     
-    #2. scaled data
-    testName = '_dataScaled'
-    dataToUse = data_scaled
+    ##2. scaled data
+    #testName = '_dataScaled_%d' %(numOfLayersToUse)
+    #dataToUse = data_scaled
+    
+    f.write('testName\t' + testName + '\n') 
     
     
-    #testName = 'initKMeans'
     
     
+
+    #testName = 'initKMeans'    
     #for index, metric in enumerate(["cosine", "euclidean", "cityblock"]):
     #model = AgglomerativeClustering(n_clusters=n_clusters,
                                     #linkage="average", affinity=metric)
@@ -436,11 +475,18 @@ if __name__ == '__main__':
     
     for name, est in estimators.items():
 	print 'start model ', name
+        f.write('model\t' + name + '\n') 
         #est.fit(arrProfiles6Layers)
         est.fit(dataToUse)
         labels = est.labels_
         print labels
         labelsVariousK.append(labels)
+        # save the labels as a file
+        labelsFile = open(classification + 'labels_%s_%s_%s%s.txt' %(realPatientID, realSide, name, testName), 'w')
+        labelsFile.write('labels\t' + str(labels) + '\n')
+        labelsFile.close()
+        # TODO! write out other parameters of the estimator!
+        
         #inertia = est.inertia_
         #inertiaVariousK.append(inertia)
         
@@ -449,7 +495,7 @@ if __name__ == '__main__':
         arrColumns = np.array(volColumns, copy = False)
         maxID = np.max(arrColumns)
         # compare the lengths
-        print len(labels), len(arrProfilesID6Layers)
+        print len(labels), len(data)
         print 'num of unique labels ', len(np.unique(arrColumns))
         
         # colour the initial columns volume into labels, and zero
@@ -467,16 +513,20 @@ if __name__ == '__main__':
         arrColumns[arrColumns <= maxID] = 0        
         print 'num of unique labels ', len(np.unique(arrColumns))
         # save this new 'colouredVolume'        
-        aims.write(volColumns, directory +  '%s_T1inT2_ColumnsCutNew20It/corticalColumns_labeled_%s%s.nii.gz' %(realPatientID, name, testName))        
+        aims.write(volColumns, classification + 'corticalColumns_labeled_%s_%s_%s%s.nii.gz' %(realPatientID, realSide, name, testName))        
     
     
     print labelsVariousK
     #print inertiaVariousK
     #[401337.82453829556, 306421.28899320849, 268000.21592927747]
-    
+    f.close()
     
     sys.exit()   
       
+      
+      
+      
+    ###################################################################################################
       
       
     fignum = 1
