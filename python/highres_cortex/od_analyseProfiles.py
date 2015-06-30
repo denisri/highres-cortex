@@ -81,6 +81,8 @@ if __name__ == '__main__':
     #realSide = 'L'
     columnDiameter = None
     workOnLaptop = False
+    numOfLayersToUse = 6
+
 
 
 #    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
@@ -95,6 +97,7 @@ if __name__ == '__main__':
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
+    parser.add_option('-n', dest='numOfLayersToUse', help='numOfLayersToUse for the cortex analysis (6 is default)')
     #parser.add_option('-t', dest='threshold', help='threshold to work with')
     parser.add_option('-d', dest='directory', help='directory')
     parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
@@ -119,7 +122,13 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
         realSide = options.realSide  
-      
+        
+    if options.numOfLayersToUse is not None:
+        print >> sys.stderr, 'New: given numOfLayersToUse.'
+        numOfLayersToUse = options.numOfLayersToUse
+    else:
+        print >> sys.stderr, 'Keep numOfLayersToUse = 6'  
+     
     pathToimagesInNewT2Space_LinearCropped10 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/'
 	
     if options.workOnLaptop is not None:
@@ -200,9 +209,9 @@ if __name__ == '__main__':
         
     # read in the columns info file
     infoFileName = pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName)
-    columnID, size  = np.loadtxt(infoFileName, skiprows = 1, usecols = (0, 1), unpack=True)
-    print zip(columnID, size)
-    
+    columnID, size, avgX, avgY, avgZ, avgDivGradn  = np.loadtxt(infoFileName, skiprows = 1, usecols = (0, 1, 2, 3, 4, 5), unpack=True)
+    #print zip(columnID, size, avgX, avgY, avgZ, avgDivGradn)
+        
     # calculatethe size threshold for the columns
     sizeThreshold = np.round(columnDiameter * columnDiameter * 4.0 / 4.0 * np.pi * 4.0 / 4.0) #(volume of a cylinder, diameter is given, resolution 0.5, height - 2mm minimum, and divided by 4 for conical cases, or too narrow cases)
     print 'sizeThreshold = ', sizeThreshold
@@ -225,9 +234,9 @@ if __name__ == '__main__':
     arrProfiles5Layers = []
     arrProfilesID5Layers = []
     arrVar5Layers = []
+    arrFeatures5Layers = []
     
     for i in range(len(largeIDs)):
-#    for i in range(1):
         # iterate through these profiles, calculate means, stdv in layers, plot figures, save files
         # find profiles of these large columns: ad140157_L_profiles2_diam3_ROI_259.txt - find all profile files like this one
         currID = int(largeIDs[i])
@@ -307,30 +316,34 @@ if __name__ == '__main__':
             # add the infor from this profile to the data
             arrProfilesID6Layers.append(currID)
             arrProfiles6Layers.append(means)
-            arrVar6Layers.append(stdvs)   
-            # for 5 layers
-            arrProfilesID5Layers.append(currID)
-            arrProfiles5Layers.append(means[1:])  
-            arrVar5Layers.append(stdvs[1:]) 
+            arrVar6Layers.append(stdvs)                  
             
-            
-            # create 'full' feature vectors, including profiles, avg coordinates of columns, sizes, avgDivGrads....
-            # for 6 layers
+            # create 'full' feature vectors, including profiles, avg coordinates of columns, sizes, avgDivGrads.... for 6 layers
             currFeatureVector = []
             currFeatureVector.extend(means)
-            currFeatureVector.extend(stdvs)
-            currFeatureVector.extend(len(currCoords))
-            # TODO! currFeatureVector.extend(          add  avg voxel coords  -> mm          )
-            # TODO! currFeatureVector.extend(          add  avg div gradn          )
-
+            currFeatureVector.extend(stdvs)     
+            # find the info on this column in the columnInfo file. Line numbers are different!!
+            infoFileID = np.where(columnID == currID)[0]
+            #print 'size ', size, 'type ', type(size)
+            #print size[infoFileID], 'type ', type(size[infoFileID]) 
+            #print (size[infoFileID])[0], 'type ', type((size[infoFileID])[0])
+            featuresFromInfoFile = [(size[infoFileID])[0], (avgX[infoFileID])[0], (avgY[infoFileID])[0], (avgZ[infoFileID])[0], (avgDivGradn[infoFileID])[0]]
+            #print 'featuresFromInfoFile = ', featuresFromInfoFile
+            #print 'currRealROIid ', currID, ' line number in columnInfofile', infoFileID, ' columnId from infoFile ', columnID[infoFileID], ' wrong Id ', columnID[i]  
+            currFeatureVector.extend(featuresFromInfoFile)      # avg column coordinates in VOXELS!!! # TODO? need to transform into mm ?? maybe not, as we do scaling
             arrFeatures6Layers.append(currFeatureVector)
             
-            # TODO later: PCA, correlation analysis! cluster using these full feature vectors 
+            # add the infor from this profile to the data for 5 layers
+            arrProfilesID5Layers.append(currID)
+            arrProfiles5Layers.append(means[1:])  
+            arrVar5Layers.append(stdvs[1:])          
             
-            # TODO: for 5 layers!!!!!!!!!!!
-            
-            
-            
+            # create 'full' feature vectors for 5 layers
+            currFeatureVector5 = []
+            currFeatureVector5.extend(means[1:])
+            currFeatureVector5.extend(stdvs[1:])
+            currFeatureVector5.extend(featuresFromInfoFile)     # avg column coordinates in VOXELS!!! # TODO? need to transform into mm ?? maybe not, as we do scaling
+            arrFeatures5Layers.append(currFeatureVector5)            
         else :
             # now check, whether this profile is complete for 5 layers (II - VI)
             if complete5Layers == False:
@@ -340,7 +353,8 @@ if __name__ == '__main__':
                 plt.savefig(corticalLayers + '%s_%s_incompleteCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))  
                 # do NOT save separate txt files, as the data is incomplete and can not be used for clustering
                 incompleteN += 1
-            else:   # this profile is incomplete for many points, but is complete for 5 layers
+            else:   
+                # this profile is incomplete for 6 layers, but is complete for 5 layers
                 axMeans.errorbar(xCoords[1:], means[1:], stdvs[1:], linestyle='solid', marker='^', ecolor = 'r') # plot means and stdvs for layers II - VI
                 plt.savefig(corticalLayers + '%s_%s_5CortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
                 # save txt files with means and stdvs !!
@@ -356,23 +370,39 @@ if __name__ == '__main__':
                 arrProfilesID5Layers.append(currID)
                 arrProfiles5Layers.append(means[1:])
                 arrVar5Layers.append(stdvs[1:])
+                
+                # create 'full' feature vectors for 5 layers!!!!!!!!!!!
+                currFeatureVector5 = []
+                currFeatureVector5.extend(means[1:])
+                currFeatureVector5.extend(stdvs[1:])
+                infoFileID = np.where(columnID == currID)
+                featuresFromInfoFile = [size[infoFileID], avgX[infoFileID], avgY[infoFileID], avgZ[infoFileID], avgDivGradn[infoFileID]]
+                currFeatureVector5.extend(featuresFromInfoFile) # avg column coordinates in VOXELS!!! # TODO? need to transform into mm ?? maybe not, as we do scaling
+                arrFeatures5Layers.append(currFeatureVector5)
 #            plt.savefig(pathForFiles + '%s_%s_nobiasT2%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName) + str(iDs[i]) + '.png')        
             # write out the same info, but sorted by sizes
 #            plt.savefig(sizeSorted + '%s_%s_nobiasT2%s_size%s_ROI_' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
             
             ## now save the same plots but sorted by their avg gradients              
 #            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
-            
         plt.clf()
         plt.close()     
     print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN 
     f.write('arrProfilesID6Layers\t' + str(arrProfilesID6Layers) + '\n') 
-
-    
+    # save extracted feature vectors
+    np.save(classification + 'arrFeatures6Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures6Layers)
+    np.save(classification + 'arrFeatures5Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures5Layers)  
+    #print arrFeatures6Layers
 ######################################################## STATISTICAL ANALYSIS ####################################################################################
 
+
+    # TODO later: PCA, correlation analysis! cluster using these full feature vectors 
+
+
+
+
     # 1. Cluster the columns using vectors of their means and stdvs in the 6 'cortical layers'
-    print (arrProfiles5Layers[0:10][:])   
+ #   print (arrFeatures6Layers[0:10][:])   
     
     ## data generation
     #data = vstack((rand(150,2) + array([.5,.5]),rand(150,2)))
@@ -390,11 +420,10 @@ if __name__ == '__main__':
 
     # work with 5 or 6 layers?
     data = []
-    numOfLayersToUse = 6
     if numOfLayersToUse == 6:
-        data = arrProfiles6Layers
+        data = arrFeatures6Layers
     elif numOfLayersToUse == 5:
-        data = arrProfiles5Layers
+        data = arrFeatures5Layers
     
     # data scaling TODO!
     data_scaled = preprocessing.scale(data)
@@ -447,13 +476,16 @@ if __name__ == '__main__':
     
     # options!    
     
-    # 1. not scaled 
-    testName = '_%d' %(numOfLayersToUse)
-    dataToUse = data
+    ## 1. not scaled 
+    #testName = '_%d_featureVect' %(numOfLayersToUse)
+    #dataToUse = data
+    #print 'dataToUse ', dataToUse
     
-    ##2. scaled data
-    #testName = '_dataScaled_%d' %(numOfLayersToUse)
-    #dataToUse = data_scaled
+    
+    
+    #2. scaled data
+    testName = '_dataScaled_%d_featureVect' %(numOfLayersToUse)
+    dataToUse = data_scaled
     
     f.write('testName\t' + testName + '\n') 
     
