@@ -175,6 +175,10 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         # get these ROIs
         arrCoord1 = arrCoord[mask != 0]
         arrValue1 = arrValue[mask != 0]
+        
+        # TODO! scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
+        arrValue1 = preprocessing.scale(arrValue1)        
+        ##################################################################################
         arrDivGradn1 = arrDivGradn[mask != 0]
         arrColouredVol1 = np.where(mask != 0)
         print 'arrColouredVol:', arrColouredVol.shape
@@ -199,8 +203,6 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         
         #arrValue1_InCortexOnly = arrValue[arrColumnsInCortexOnly != 0]
        
-        coords = arrCoord1[arrCoord1 != 0]
-        values = arrValue1[arrCoord1 != 0]
                 
         ############## don't need it! was already done before calling the function!        
         # try to take the mask, to erode it 1-2 times, and to compare histograms!      

@@ -241,12 +241,15 @@ if __name__ == '__main__':
         # find profiles of these large columns: ad140157_L_profiles2_diam3_ROI_259.txt - find all profile files like this one
         currID = int(largeIDs[i])
         #print 'currID = ', currID
+        
+        # TODO! need the scaled data!!!!! generate scaled profiles!!!
+        
+        
         profileFile = pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID))
         #print 'work with file  ', profileFile
         currCoords, currValues  = np.loadtxt(profileFile, skiprows = 1, usecols = (1, 2), unpack=True)
         #print zip(depthCoord, value)
         
-        # TODO! get X,Y coordinates of these points! and add them to the 'feature vectors'
         
         
         fig = plt.figure(figsize=(2 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
@@ -483,10 +486,9 @@ if __name__ == '__main__':
     
     
     
-    #2. scaled data
+    #2. scaled data. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients
     testName = '_dataScaled_%d_featureVect' %(numOfLayersToUse)
     dataToUse = data_scaled
-    
     f.write('testName\t' + testName + '\n') 
     
     
