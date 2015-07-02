@@ -63,7 +63,7 @@ import highres_cortex.od_cutOutRois
 from soma.aims import volumetools
 import matplotlib.pyplot as plt
 import math
-
+from sklearn import preprocessing
 
 def extractProfiles(volCoord, volValue, volMask = None):
     """
@@ -177,7 +177,12 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         arrValue1 = arrValue[mask != 0]
         
         # TODO! scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
-        arrValue1 = preprocessing.scale(arrValue1)        
+        # important! need to transform them to float before!!!
+        arrValue1 = arrValue1.astype('float')
+        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.median(arrValue1), np.max(arrValue1)        
+        arrValue1 = preprocessing.scale(arrValue1)              
+        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.median(arrValue1), np.max(arrValue1)
+  
         ##################################################################################
         arrDivGradn1 = arrDivGradn[mask != 0]
         arrColouredVol1 = np.where(mask != 0)
@@ -186,47 +191,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
        
         coords = arrCoord1[arrCoord1 != 0]
         values = arrValue1[arrCoord1 != 0]
-        divGradns = arrDivGradn1[arrCoord1 != 0]
-        
-        
-        # TODO: delete later? 
-        # plot the hist of these values
-        #plt.hist(values, color = 'red')        # these are values in cortex + one voxel of CSF
-        #plt.show()
-        
-        # plot the values in the cortex area (without CSF voxels) ONLY:
-        #columnsInCortexOnly = aims.read('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz')
-        #arrColumnsInCortexOnly = np.asarray(columnsInCortexOnly)
-        
-        #arrCoord1_InCortexOnly = arrCoord[arrColumnsInCortexOnly != 0]
-        
-        
-        #arrValue1_InCortexOnly = arrValue[arrColumnsInCortexOnly != 0]
-       
-                
-        ############## don't need it! was already done before calling the function!        
-        # try to take the mask, to erode it 1-2 times, and to compare histograms!      
-        #pathToClassifWithBorders = '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/at140353/at140353_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_at140353_L_cut_noSulci_extended.nii.gz'
-        #volGWborders = aims.read(pathToClassifWithBorders)
-        #arrGWborders = np.array(volGWborders)
-        #print np.unique(arrGWborders)
-        
-        #arrCoord1_onlyCortex = arrCoord[arrGWborders == 100]
-        #arrValue1_onlyCortex = arrValue[arrGWborders == 100]
-        
-       ## arrGWborders1 = arrGWborders[arrGWborders == 100]
-        ##valuesWithoutCSF = arrValue1[arrGWborders == 100]
-        ##plt.hist(arrValue1_onlyCortex, color = 'green')        # these are values in cortex + one voxel of CSF
-        #plt.hist(values, alpha=0.8, label='WithCSF', facecolor='green')
-        #plt.hist(arrValue1_onlyCortex, alpha=0.8, label='OnlyCortex', facecolor='red')
-        ##plt.title('Main Plot Title',fontsize=25,horizontalalignment='right')
-        ##plt.ylabel('Count',fontsize=20)
-        ##plt.yticks(fontsize=15)
-        ##plt.xlabel('X Axis Label',fontsize=20)
-        ##plt.xticks(fontsize=15)
-        #plt.legend()
-        #plt.show()
-        
+        divGradns = arrDivGradn1[arrCoord1 != 0]               
         ids = np.where(arrCoord1 != 0)
         print len(ids), ' len(ids) ', len(coords), ' len(coords) '
         # got the ids. now need to get x, y coordinates
@@ -263,7 +228,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
             divGradnsi = arrDivGradn1i[arrCoord1i != 0]
             
             avgDiv = np.mean(divGradnsi)
-            #print '------------------------- work with ROI ', i, ' # of points= ', len(coordsi), ' average divGradn = ', avgDiv, ' ----------------'
+            #print '---------- work with ROI ', i, ' # of points= ', len(coordsi), 'realColumnSize= ', len(np.where(arrColumns == i)[0]), ' average divGradn = ', avgDiv, ' -------'
             #if math.isnan(avgDiv):
                 #print len(coordsi), len(valuesi), len(divGradnsi), ' the whole digGradnList',  divGradnsi               
                 
@@ -321,17 +286,11 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
                 counters[2] += 1
                 countVoxels[2] += len(coordsi)
                 listOfAvgDivGradnCateg.append(30)
-
+        
         # save this new colouring scheme
         newVol = aims.Volume(arrColouredVol)
-        #print newVol.header()
-        #aims.write(newVol, '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/testColouredVol6.nii.gz')
-        #print 'unique values:', np.unique(arrColouredVol)
-        #aims.write(volColoured, '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/sg140335/divGradnClasses/sg140335_R_testColouredVol_01_01.nii.gz')
         print 'lower ', divGrThr[0], ' : ', counters[0]/float(len(roiIds)), ', lower ', divGrThr[1], ' : ', counters[1]/float(len(roiIds)), ', over ', divGrThr[1], ' : ', counters[2]/float(len(roiIds))   
         print 'lower ', divGrThr[0], ' : ', countVoxels[0]/float(sum(countVoxels)), ', lower ', divGrThr[1], ' : ', countVoxels[1]/float(sum(countVoxels)), ', over ', divGrThr[1], ' : ', countVoxels[2]/float(sum(countVoxels))
-        #print 'forced exit'
-        #sys.exit(0)
         
         # get IDs of columns in various mask regions
         #print 'len(roisMask) ', len(roisMask)
@@ -575,7 +534,8 @@ if __name__ == '__main__':
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide), '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
               
         result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, volMask)   
-    
+        
+            
     # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
     #coordinates = result[0]
     #intensities = result[1]
@@ -595,8 +555,7 @@ if __name__ == '__main__':
     #plt.title('Profile in ROI')   # subplot 211 title
     #plt.xlabel('Cortical depth')
     #plt.ylabel('T2-nobias intensity')
-    #plt.savefig(directory + '%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
-    
+    #plt.savefig(directory + '%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))    
     #plt.clf()
     #plt.close()
     
@@ -608,7 +567,7 @@ if __name__ == '__main__':
     plt.clf()
     plt.close()
   
-    # save the data for further processing. TODO: find information about their coordinates!!
+    # save the data for further processing. 
     #data1 = open(directory + '%s_%s_profiles.txt' %(realPatientID, realSide), "w")
     data2 = open(directory + '%s_%s_profiles2.txt' %(realPatientID, realSide), "w")
     headerLine = '\t' + 'DepthCoord' + '\t' + 'Value'
@@ -634,6 +593,9 @@ if __name__ == '__main__':
     print '############################################ columnDiameter = ', str(columnDiameter)
     if columnDiameter is not None:
         addedColumnsDiamName = '_diam%s' %(columnDiameter)
+        # TODO: delete it after the tests!
+        addedColumnsDiamName = addedColumnsDiamName + '_scaled'        
+
         # if the result was for the columns, create a separate folder for it
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)
         if not os.path.exists(pathForFiles):
@@ -652,7 +614,7 @@ if __name__ == '__main__':
     # complete the header with the mask ROI info. If columnDiameter was given
     if columnDiameter is not None:        
         for i in range(len(maskROIids)):
-                headerInfo += '\tMaskROI_' + str(maskROIids[i]) + '\t'    
+            headerInfo += '\tMaskROI_' + str(maskROIids[i]) + '\t'    
         headerInfo += 'ToIgnore\n'    
     else:
         headerInfo += '\n'    
@@ -755,7 +717,7 @@ if __name__ == '__main__':
         plt.title('Histogram of columns sizes for diameter %s ' %(columnDiameter))   # subplot 211 title
         plt.xlabel('Cortical columns sizes')
         plt.ylabel('Percentage')
-        plt.savefig(directory + '%s_%s_histOfColumnSizes_diam%s.png' %(realPatientID, realSide, str(columnDiameter)))    
+        plt.savefig(directory + '%s_%s_histOfColumnSizes%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
         plt.clf()
         plt.close()
         
@@ -765,7 +727,7 @@ if __name__ == '__main__':
         plt.title('Histogram of theoretical heights of columns for diameter %s ' %(columnDiameter))   # subplot 211 title
         plt.xlabel('Theoretical heights of columns')
         plt.ylabel('Percentage')
-        plt.savefig(directory + '%s_%s_histOfTheorHeights_diam%s.png' %(realPatientID, realSide, str(columnDiameter)))    
+        plt.savefig(directory + '%s_%s_histOfTheorHeights%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
         plt.clf()
         plt.close()
         
@@ -797,7 +759,7 @@ if __name__ == '__main__':
                 plt.title('Profile in cortical columns larger %s' %(minColumnSizes[j]))   # subplot 211 title
                 plt.xlabel('Cortical depth')
                 plt.ylabel('T2-nobias intensity')
-                plt.savefig(directory + '%s_%s_newNobiasT2_diam%s_over%s.png' %(realPatientID, realSide, str(columnDiameter), minColumnSizes[j]))    
+                plt.savefig(directory + '%s_%s_newNobiasT2%s_over%s.png' %(realPatientID, realSide, addedColumnsDiamName, minColumnSizes[j]))    
                 plt.clf()
                 plt.close()
             
