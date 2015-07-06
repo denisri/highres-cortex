@@ -432,8 +432,12 @@ if __name__ == '__main__':
     if options.workOnLaptop is not None:
 	    workOnLaptop = options.workOnLaptop      
 	    # if true, then processes are run on the laptop. Change locations of neurospin DBs
-	    pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
-	    pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')        
+	    #pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')
+	    #pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')  
+	    
+	    # saving the data locally on the laptop
+	    pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+	    pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')  	    
         
     pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
     pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
