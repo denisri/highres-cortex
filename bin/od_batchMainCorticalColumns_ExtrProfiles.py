@@ -110,7 +110,7 @@ for p in listOfSubjects:
     
     for s in hemispheres:
         
-        #print 'start with hemisphere ', s
+        print 'start with hemisphere ', s
         
         # 1. run the main cortical columns script for CUT volumes, 
         #print 'run the main cortical columns script for CUT volumes'
@@ -127,25 +127,33 @@ for p in listOfSubjects:
         #print 'test whether the selected region growing was enough'
         #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/', '-s', s])
         
+        
+        ######################################### 12.05.2015: Yann & Denis: check the flatness of the column region ####################################
+        # for each column: take the image "div_gradn" and calculate 
+        
+        
+        
+        
+        
         # 4. extract profiles and plot them
         #print 'extract profiles and plot them'
         #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' %(p), '-p', p, '-s', s])
     
     
-        ## without cortical columns
-        print 'start extract profiles and plot them with directory : ', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p)
-        subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p)])
+        ### without cortical columns
+        #print 'start extract profiles and plot them with directory : ', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p)
+        #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p)])
         
-        diams = [1, 3, 5, 7, 9]
-        #diams = [9]
+        #diams = [1, 3, 5, 7, 9]
+        diams = [3]
         for diam in diams:
             ## with cortical columns
             subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p), '-c', str(diam)])
         print ''
         
-    # 5. plot LvsR data for the listOfSubjects
-    # TODO: modify it and add a real diameter!!!
-    subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotRightLeftProfiles.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p), '-c', str(9)])
+    ## 5. plot LvsR data for the listOfSubjects
+    ## TODO: modify it and add a real diameter!!!
+    #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotRightLeftProfiles.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p), '-c', str(9)])
         
         
         

@@ -164,7 +164,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
     listOfROIsInMask = []
     listOfSizes = []
     listOfSeparateAVGCoords = []        # AVG coordinates of individual columns (to be used in clustering)
-
+    strMeansInfo = ''
    
     if volMask is not None:
         mask = np.asarray(volMask)    
@@ -176,13 +176,41 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         arrCoord1 = arrCoord[mask != 0]
         arrValue1 = arrValue[mask != 0]
         
+        ## study T2 intensities for data cleaning        
+        #arrValue1WM = arrValue[mask == 200] # get values in the WM
+        #arrValue1Cortex = arrValue[mask == 100] # get values in the cortex
+        #arrValue1CSF = arrValue[mask == 0] # get values in the CSF
+        #fig = plt.figure(figsize=(3 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+        ## and now plot them
+        #axWM = fig.add_subplot(1,3,1)
+        #axWM.hist(arrValue1WM, bins = 50)
+        #axWM.title('Histogram of T2 intensities in WM')   # subplot 211 title
+        #axCortex = fig.add_subplot(1,3,2)
+        #axCortex.hist(arrValue1Cortex, bins = 50)
+        #axCortex.title('Histogram of T2 intensities in cortex')   # subplot 211 title
+        #axCSF = fig.add_subplot(1,3,3)
+        #axCSF.hist(arrValue1CSF, bins = 50)
+        #axCSF.title('Histogram of T2 intensities in CSF')   # subplot 211 title
+        ##plt.savefig(directory + '%s_%s_histOfColumnSizes%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
+        #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ac140159/.png' %(realPatientID, realSide, addedColumnsDiamName))    
+        #plt.clf()
+        #plt.close()
+        
+        
+        
+        
+        
+        
         # TODO! scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
         # important! need to transform them to float before!!!
+        strMeansInfo = 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
         arrValue1 = arrValue1.astype('float')
-        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.median(arrValue1), np.max(arrValue1)        
+        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)       
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
+        strMeansInfo = 'Min, Mean, SD, Median, Max of scaled T2 data: \n'
         arrValue1 = preprocessing.scale(arrValue1)              
-        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.median(arrValue1), np.max(arrValue1)
-  
+        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
         ##################################################################################
         arrDivGradn1 = arrDivGradn[mask != 0]
         arrColouredVol1 = np.where(mask != 0)
@@ -369,8 +397,27 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
     res.append(volColoured)
     res.append(listOfAvgDivGradnCateg)
     res.append(listOfSeparateAVGCoords)
+    res.append(strMeansInfo)
     return(res)       
     
+    
+    
+# this function calculates 7-number statistics, prints it out and writes into a given file
+def computeRanges(arr, fileF, keyWord):
+    meanV = np.mean(arr)
+    sdV = np.std(arr)
+    lowerOutlierBorder = np.round(meanV - 3 * sdV)     
+    upperOutlierBorder = np.round(meanV + 3 * sdV)     
+    # lower and upper outlier borders - correspond to which percentiles?
+    sizeN = len(arr)
+    lowerPercentage = len(np.where(arr < lowerOutlierBorder)[0]) * 100.0 / sizeN
+    upperPercentage = len(np.where(arr < upperOutlierBorder)[0]) * 100.0 / sizeN
+    print 'for *%s* mean = ' %(keyWord), meanV, ' sd= ', sdV, ' mean +- 3sd = (', lowerOutlierBorder, ' , ', upperOutlierBorder, '), percentiles : (' , lowerPercentage, upperPercentage, ')'
+    fT2intensInfo.write('for *' + keyWord + '* mean= ' + str(np.round(meanV)) + ' sd= ' + str(np.round(sdV)) + ' mean +- 3sd = (' + str(lowerOutlierBorder) + ' , '+ str(upperOutlierBorder) + '), percentiles : (' + str(lowerPercentage) + ' , ' + str(upperPercentage) + ')\n')
+    fileF.write('------------------------------------------------------------------- \n')
+    return(0)
+
+
 
     
 if __name__ == '__main__':
@@ -441,14 +488,14 @@ if __name__ == '__main__':
         
     pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
     pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
-    
-    print 'volsCoord = ' , pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
-    print 'volsMask = ', pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide)
-    
     volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
     volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
     volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
     volsMask = glob.glob(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
+    print 'volsCoord = ' , pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
+    print 'volsMask = ', pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide)
+    print 'volValue2 = ', pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID)     
+    volClassifNoBorders = directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
 
     # test if all data is available
     if len(volsCoord) != 1 or len(volsMask) != 1:
@@ -466,6 +513,145 @@ if __name__ == '__main__':
     volCoord = aims.read(volsCoord[0])  
     volMask = aims.read(volsMask[0])
     
+    
+
+    # study T2 intensities for data cleaning  
+    fT2intensInfo = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
+    maskGW = np.asarray(aims.read(volClassifNoBorders))
+    print 'maskGW = ' , volClassifNoBorders
+    volFullGW = '/neurospin/lnao/dysbrain/brainvisa_db_highresLinearCropped10/dysbrain/%s/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realPatientID, realSide, realPatientID)
+    print 'volFullGW = ', volFullGW
+    maskGWFull = np.asarray(aims.read(volFullGW))# also compare to all data available in T2, not only ROIs
+    arrValue = np.asarray(volValue2)
+    arrValue1WM = arrValue[maskGW == 200] # get values in the WM
+    arrValue1Cortex = arrValue[maskGW == 100] # get values in the cortex
+    arrValue1CSF = arrValue[maskGW == 0] # get values in the CSF
+    #fig = plt.figure(figsize=(3 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+    fig = plt.figure(figsize=(3 * 7, 2* 6)) #, dpi=80, facecolor='w', edgecolor='k')
+    # and now plot them
+    axWM = fig.add_subplot(2,3,1)
+    axWM.hist(arrValue1WM, bins = 50)    
+    axWM.set_title('Histogram of T2 intensities in WM')   # subplot 211 title
+    axCortex = fig.add_subplot(2,3,2)
+    axCortex.hist(arrValue1Cortex, bins = 50)
+    axCortex.set_title('Histogram of T2 intensities in cortex')   # subplot 211 title
+    axCSF = fig.add_subplot(2,3,3)
+    axCSF.hist(arrValue1CSF, bins = 50)
+    axCSF.set_title('Histogram of T2 intensities in CSF')   # subplot 211 title
+    
+    # just for test: the same but EXCLUDING zeros
+    arrValue1CortexNoZeros = arrValue1Cortex[arrValue1Cortex > 0]
+    arrValue1WMNoZeros = arrValue1WM[arrValue1WM > 0]
+    arrValue1CSFNoZeros = arrValue1CSF[arrValue1CSF > 0]
+    axWMNoZeros = fig.add_subplot(2,3,4)
+    axWMNoZeros.hist(arrValue1WMNoZeros, bins = 50)    
+    axWMNoZeros.set_title('Histogram of T2 intensities in WM NoZeros')   # subplot 211 title
+    axCortexNoZeros = fig.add_subplot(2,3,5)
+    axCortexNoZeros.hist(arrValue1CortexNoZeros, bins = 50)
+    axCortexNoZeros.set_title('Histogram of T2 intensities in cortex NoZeros')   # subplot 211 title
+    axCSFNoZeros = fig.add_subplot(2,3,6)
+    axCSFNoZeros.hist(arrValue1CSFNoZeros, bins = 50)
+    axCSFNoZeros.set_title('Histogram of T2 intensities in CSF NoZeros')   # subplot 211 title    
+    #plt.savefig(directory + '%s_%s_histOfT2intensitiesInROIs.png' %(realPatientID, realSide))    
+    plt.savefig(directory + '%s_%s_histOfT2intensInROIs.png' %(realPatientID, realSide))    
+    plt.clf()
+    plt.close()
+ 
+   
+    arrValue1WMFull = arrValue[maskGWFull == 200] # get values in the WM
+    arrValue1CortexFull = arrValue[maskGWFull == 100] # get values in the cortex
+    arrValue1CSFFull = arrValue[maskGWFull == 0] # get values in the CSF
+    fig = plt.figure(figsize=(3 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+    # and now plot them
+    axWM = fig.add_subplot(1,3,1)
+    axWM.hist(arrValue1WMFull, bins = 50)    
+    axWM.set_title('Histogram of T2 intensities in WM')   # subplot 211 title
+    axCortex = fig.add_subplot(1,3,2)
+    axCortex.hist(arrValue1CortexFull, bins = 50)
+    axCortex.set_title('Histogram of T2 intensities in cortex')   # subplot 211 title
+    axCSF = fig.add_subplot(1,3,3)
+    axCSF.hist(arrValue1CSFFull, bins = 50)
+    axCSF.set_title('Histogram of T2 intensities in CSF')   # subplot 211 title
+    plt.savefig(directory + '%s_%s_histOfT2intensitiesAllData.png' %(realPatientID, realSide))    
+    plt.clf()
+    plt.close()
+    
+    
+    # print out the percentiles
+    percentiles = [1, 5, 10, 90, 95, 99]
+    # means and sd
+    #meanV = np.mean(arrValue1Cortex)
+    #sdV = np.std(arrValue1Cortex)
+    #lowerOutlierBorder = np.round(meanV - 3 * sdV)      # cortex
+    #upperOutlierBorder = np.round(meanV + 3 * sdV)
+    # lower and upper outlier borders - correspond to which percentiles?
+    sizeNCortex = len(arrValue1Cortex)
+    sizeNCortexNoZeros = len(arrValue1CortexNoZeros)   
+    #lowerPercentage = len(np.where(arrValue1Cortex < lowerOutlierBorder)[0]) * 100.0 / sizeN
+    #upperPercentage = len(np.where(arrValue1Cortex < upperOutlierBorder)[0]) * 100.0 / sizeN 
+    #print 'mean arrValue1Cortex = ', meanV, ' sd= ', sdV, ' mean +- 3sd = (', lowerOutlierBorder, ' , ', upperOutlierBorder, '), percentiles : (' , lowerPercentage, upperPercentage, ')'
+    #fT2intensInfo.write('mean arrValue1Cortex = ' + str(np.round(meanV)) + ' sd= ' + str(np.round(sdV)) + ' mean +- 3sd = (' + str(lowerOutlierBorder) + ' , '+ str(upperOutlierBorder) + '), percentiles : (' + str(lowerPercentage) + ' , ' + str(upperPercentage) + ')\n')
+    
+    computeRanges(arrValue1Cortex, fT2intensInfo, 'cortexROIs')
+    
+    
+
+
+    ######################## simulate the same EXCLUDING zeros (supposably segmentation errors)
+    numZeros = len(np.where(arrValue1Cortex == 0)[0])
+    print 'number of Voxels in Cortex ROIs with 0 intensity = ', numZeros
+    fT2intensInfo.write('number of Voxels in Cortex ROIs with 0 intensity = ' + str(numZeros) + '\n')
+    #meanVNoZeros = np.mean(arrValue1CortexNoZeros)
+    #sdVNoZeros = np.std(arrValue1CortexNoZeros)
+    #lowerOutlierBorderNoZeros = np.round(meanVNoZeros - 3 * sdVNoZeros)      # cortex, excluding zeros
+    #upperOutlierBorderNoZeros = np.round(meanVNoZeros + 3 * sdVNoZeros)
+    ## lower and upper outlier borders - correspond to which percentiles?
+    #sizeNNoZeros = len(arrValue1CortexNoZeros)
+    #lowerPercentageNoZeros = len(np.where(arrValue1CortexNoZeros < lowerOutlierBorderNoZeros)[0]) * 100.0 / sizeNNoZeros
+    #upperPercentageNoZeros = len(np.where(arrValue1CortexNoZeros < upperOutlierBorderNoZeros)[0]) * 100.0 / sizeNNoZeros 
+    #print 'mean arrValue1CortexNoZeros = ', meanVNoZeros, ' sdNoZeros= ', sdVNoZeros, ' meanNoZeros +- 3sdNoZeros = (', lowerOutlierBorderNoZeros, ' , ', upperOutlierBorderNoZeros, '), percentiles : (' , lowerPercentageNoZeros, upperPercentageNoZeros, ')'
+    #fT2intensInfo.write('############ data with excluded zero values ############### \n')
+    #fT2intensInfo.write('mean arrValue1CortexNoZeros = ' + str(np.round(meanVNoZeros)) + ' sd= ' + str(np.round(sdVNoZeros)) + ' mean +- 3sd = (' + str(lowerOutlierBorderNoZeros) + ' , '+ str(upperOutlierBorderNoZeros) + '), percentiles : (' + str(lowerPercentageNoZeros) + ' , ' + str(upperPercentageNoZeros) + ')\n')
+    computeRanges(arrValue1CortexNoZeros, fT2intensInfo, 'cortexROIs_NoZeros')
+    
+    
+    
+    
+    # WM    
+    computeRanges(arrValue1WM, fT2intensInfo, 'WMROIs')
+    numZerosWM = len(np.where(arrValue1WM == 0)[0])
+    print 'number of Voxels in WM ROIs with 0 intensity = ', numZerosWM
+    fT2intensInfo.write('number of Voxels in WM ROIs with 0 intensity = ' + str(numZerosWM) + '\n')
+    #meanVNoZerosWM = np.mean(arrValue1WMNoZeros)
+    #sdVNoZerosWM = np.std(arrValue1WMNoZeros)
+    #lowerOutlierBorderNoZerosWM = np.round(meanVNoZerosWM - 3 * sdVNoZerosWM)      # cortex, excluding zeros
+    #upperOutlierBorderNoZerosWM = np.round(meanVNoZerosWM + 3 * sdVNoZerosWM)
+    ## lower and upper outlier borders - correspond to which percentiles?
+    #sizeNNoZerosWM = len(arrValue1WMNoZeros)
+    #lowerPercentageNoZerosWM = len(np.where(arrValue1WMNoZeros < lowerOutlierBorderNoZerosWM)[0]) * 100.0 / sizeNNoZerosWM
+    #upperPercentageNoZerosWM = len(np.where(arrValue1WMNoZeros < upperOutlierBorderNoZerosWM)[0]) * 100.0 / sizeNNoZerosWM
+    #print 'mean arrValue1WMNoZeros = ', meanVNoZerosWM, ' sdNoZerosWM= ', sdVNoZerosWM, ' meanNoZerosWM +- 3sdNoZerosWM = (', lowerOutlierBorderNoZerosWM, ' , ', upperOutlierBorderNoZerosWM, '), percentiles : (' , lowerPercentageNoZerosWM, upperPercentageNoZerosWM, ')'
+    #fT2intensInfo.write('############ WM ############### \n')
+    #fT2intensInfo.write('mean arrValue1WMNoZeros = ' + str(np.round(meanVNoZerosWM)) + ' sdWM= ' + str(np.round(sdVNoZerosWM)) + ' meanWM +- 3sdWM = (' + str(lowerOutlierBorderNoZerosWM) + ' , '+ str(upperOutlierBorderNoZerosWM) + '), percentiles : (' + str(lowerPercentageNoZerosWM) + ' , ' + str(upperPercentageNoZerosWM) + ')\n')
+    computeRanges(arrValue1WMNoZeros, fT2intensInfo, 'WMROIs_NoZeros')    
+
+
+    for p in percentiles:
+        print 'percentile ', p, 'arrValue1Cortex = ', np.percentile(arrValue1Cortex, p), 'arrValue1CortexFull = ', np.percentile(arrValue1CortexFull, p), 'arrValue1CortexNoZeros = ', np.percentile(arrValue1CortexNoZeros, p)
+        fT2intensInfo.write('percentile ' + str(p) + ' arrValue1Cortex = ' + str(np.percentile(arrValue1Cortex, p)) + ' arrValue1CortexFull = ' + str(np.percentile(arrValue1CortexFull, p)) + ' arrValue1CortexNoZeros = ' + str(np.percentile(arrValue1CortexNoZeros, p)) + '\n')
+        
+    fT2intensInfo.write('\n')
+    #number ( % ) of voxels smaller then for CORTEX!
+    smallerThen = [50, 40, 30, 20, 10, 5]
+    for p in smallerThen:
+        num = len(np.where(arrValue1Cortex < p)[0])
+        numNoZeros = len(np.where(arrValue1CortexNoZeros < p)[0])
+        print 'smallerThen ', p, ' arrValue1Cortex = ', num, ' from ', sizeNCortex, ' % = ', np.round(num * 100.0 / sizeNCortex),  ' arrValue1CortexNoZeros = ', numNoZeros, ' from ', sizeNCortexNoZeros, ' % = ', np.round(numNoZeros * 100.0 / sizeNCortexNoZeros) 
+        fT2intensInfo.write('smallerThen ' + str(p) + ' arrValue1Cortex = ' + str(num) + ' from ' + str(sizeNCortex) + ' % = ' + str(np.round(num * 100.0 / sizeNCortex)) + ' arrValue1CortexNoZeros = ' + str(numNoZeros) + ' from ' + str(sizeNCortexNoZeros) + ' % = ' + str(np.round(numNoZeros * 100.0 / sizeNCortexNoZeros)) + '\n')    
+    
+    fT2intensInfo.close()
+    #sys.exit(0)
+
     
     # if no columns diameter was given, then extract profiles in the mask
     if columnDiameter is None:
@@ -530,14 +716,22 @@ if __name__ == '__main__':
         
         # Do NOT need to re-extract the profiles in the merged-randomized volume, which was cut!!! (so that regions 50 and 150, corresponding to borders, were eliminated, but write this volume out)
         print 'cut borders from the volume ', volsColumns[0]
-        volClassifNoBorders = directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
         print 'using the original file ', volClassifNoBorders
         # cut the borders
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '0', '-v', '0', '-i', volsColumns[0], '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
         
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide), '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
               
+        # TODO : delete it!      
+        sys.exit()
+        
         result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, volMask)   
+        
+        
+        
+        
+        
+
         
             
     # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
@@ -591,7 +785,7 @@ if __name__ == '__main__':
     volColouredByAvgDivGrads = result2[8]
     listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
     listOfAvgVoxelCoords = result2[10]
-
+    strMeansInfo = result2[11]
     addedColumnsDiamName = ''
     pathForFiles = directory
     print '############################################ columnDiameter = ', str(columnDiameter)
