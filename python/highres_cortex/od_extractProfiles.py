@@ -418,7 +418,85 @@ def computeRanges(arr, fileF, keyWord):
     return(0)
 
 
+# this function will verify whether the Voronoi segmentation of the ROIs is 
+# outside of the T2 acquired images# further, it will notify if voronoi touches the lower or the upper 4 layers of T2
+def testVoronoiOutsideT2(voronoiVol, T2Vol, numOfLayerToAvoid, fileStat = None):
+    print '----------------------- start testVoronoiOutsideT2 --------------------------------------'
+    arrVoronoi = np.asarray(voronoiVol)
+    arrT2 = np.asarray(T2Vol)
+    #print 'arrVoronoi ', np.shape(arrVoronoi),', arrT2 ', np.shape(arrT2)   
+   
+    # find z layers of T2 that are NOT completely zeros
+    xCoordsAllT2, yCoordsAllT2, zCoordsAllT2, tCoordsAllT2 = np.where(arrT2 > 0)
+    lowerNonZeroLayerT2 = np.max(zCoordsAllT2)       
+    upperNonZeroLayerT2 = np.min(zCoordsAllT2)       
+    print 'non zero z limits of T2 ', upperNonZeroLayerT2, lowerNonZeroLayerT2
+          
+    # compare it to the top and bottom z coordinates of the Voronoi
+    xCoordsVor, yCoordsVor, zCoordsVor, tCoordsVor = np.where(arrVoronoi != 0)
+    lowerNonZeroLayerVor = np.max(zCoordsVor)       
+    upperNonZeroLayerVor = np.min(zCoordsVor) 
+    print 'non zero z limits of Voronoi ', upperNonZeroLayerVor, lowerNonZeroLayerVor
+    
+    # write out info
+    if fileStat is not None:
+        fileStat.write('non zero z limits of T2 ' + str(upperNonZeroLayerT2) + ' , ' + str(lowerNonZeroLayerT2) + '\n')
+        fileStat.write('non zero z limits of Voronoi ' + str(upperNonZeroLayerVor) + ' , ' + str(lowerNonZeroLayerVor) + '\n')
+ 
+    if (upperNonZeroLayerVor < upperNonZeroLayerT2):
+        overlapTop = upperNonZeroLayerVor - upperNonZeroLayerT2
+        print 'Problem! Voronoi in zero T2 layers from top! Overlap of %s layers!' %(overlapTop)
+        if fileStat is not None:
+            fileStat.write('Problem! Voronoi in zero T2 layers from top! Overlap of %s layers!\n' %(str(overlapTop)))            
+    # even if voronoi is NOT in the zero layer of T2 ,it might be in dark layers. Consider 4 top and bottom layers - too dark!
+    if (upperNonZeroLayerVor < (upperNonZeroLayerT2 + numOfLayerToAvoid)):
+        overlapTopDark = upperNonZeroLayerVor - (upperNonZeroLayerT2 + numOfLayerToAvoid)
+        print 'Problem! Voronoi in %s dark T2 layers from top! Overlap of %s layers!' %(numOfLayerToAvoid, overlapTopDark)
+        if fileStat is not None:
+            fileStat.write('Problem! Voronoi in %s dark T2 layers from top! Overlap of %s layers!\n' %(str(numOfLayerToAvoid), str(overlapTopDark)))         
+    if (lowerNonZeroLayerVor > lowerNonZeroLayerT2):
+        overlapBottom = lowerNonZeroLayerVor - lowerNonZeroLayerT2
+        print 'Problem! Voronoi in zero T2 layers from bottom! Overlap of %s layers!' %(overlapBottom)    
+        if fileStat is not None:
+            fileStat.write('Problem! Voronoi in zero T2 layers from bottom! Overlap of %s layers!\n' %(str(overlapBottom)))         
+    # even if voronoi is NOT in the zero layer of T2 ,it might be in dark layers. Consider 4 top and bottom layers - too dark!
+    if (lowerNonZeroLayerVor > (lowerNonZeroLayerT2 - numOfLayerToAvoid)):
+        overlapBottomDark = lowerNonZeroLayerVor - (lowerNonZeroLayerT2 - numOfLayerToAvoid)
+        print 'Problem! Voronoi in %s dark T2 layers from bottom! Overlap of %s layers!' %(numOfLayerToAvoid, overlapBottomDark)
+        if fileStat is not None:
+            fileStat.write('Problem! Voronoi in %s dark T2 layers from bottom! Overlap of %s layers!\n' %(str(numOfLayerToAvoid), str(overlapBottomDark))) 
 
+    #print 'number of voxels in mask that are nonzero ', len(np.where(arrVoronoi != 0)[0])
+    minValArrT2 = np.min(arrT2)
+    maxValArrT2 = np.max(arrT2)
+    #print minValArrT2, maxValArrT2
+    
+    arrT2[arrVoronoi == 0] = (maxValArrT2 + 10)
+    arrT2[arrT2 > 0] = (maxValArrT2 + 10)
+    # how many zero voxels are left
+    xCoords, yCoords, zCoords, tCoords = np.where(arrT2 == 0)
+    print 'number of T2 zero in nonZero Voronoi mask ', len(xCoords)
+ 
+    #print zip(xCoords, yCoords, zCoords)
+    #print 'sorted x ', np.sort(xCoords)
+    #print 'sorted y ', np.sort(yCoords)
+    #print 'sorted z ', np.sort(zCoords)
+    #plt.hist(zCoords, bins = 100)
+    unique, counts = np.unique(zCoords, return_counts = True)
+    print 'z coordinates of zeros and their counts ', zip(unique, counts)
+    if fileStat is not None:
+        fileStat.write('number of T2 zero in nonZero Voronoi mask %s \n' %(len(xCoords))) 
+        fileStat.write('z coordinates of zeros and their counts %s \n' %(zip(unique, counts)))
+    
+    #plt.show()
+
+    #sys.exit(0)
+    
+    return(0)
+    
+    
+    
+    
     
 if __name__ == '__main__':
     
@@ -514,9 +592,20 @@ if __name__ == '__main__':
     volMask = aims.read(volsMask[0])
     
     
-
-    # study T2 intensities for data cleaning  
+    
     fT2intensInfo = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
+    ################ TODO ! ########  repeat this analysis for the new subjects!!!!!!!!!!!!!!!! #######################################################
+    ## test how many zeros in the data 
+    #testVoronoiOutsideT2(volMask, volValue2, 4, fT2intensInfo)    
+    #sys.exit(0)
+    ###################################################################################################################################################
+    
+    
+    
+    
+    
+    
+    # study T2 intensities for data cleaning  
     maskGW = np.asarray(aims.read(volClassifNoBorders))
     print 'maskGW = ' , volClassifNoBorders
     volFullGW = '/neurospin/lnao/dysbrain/brainvisa_db_highresLinearCropped10/dysbrain/%s/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realPatientID, realSide, realPatientID)
@@ -650,7 +739,7 @@ if __name__ == '__main__':
         fT2intensInfo.write('smallerThen ' + str(p) + ' arrValue1Cortex = ' + str(num) + ' from ' + str(sizeNCortex) + ' % = ' + str(np.round(num * 100.0 / sizeNCortex)) + ' arrValue1CortexNoZeros = ' + str(numNoZeros) + ' from ' + str(sizeNCortexNoZeros) + ' % = ' + str(np.round(numNoZeros * 100.0 / sizeNCortexNoZeros)) + '\n')    
     
     fT2intensInfo.close()
-    #sys.exit(0)
+    sys.exit(0)
 
     
     # if no columns diameter was given, then extract profiles in the mask
