@@ -200,16 +200,65 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         
         
         
-        
+        # TODO! before all this: ensure to work on zero-free data!!!!!!!!!!!!!!!
         # TODO! scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
         # important! need to transform them to float before!!!
         strMeansInfo = 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
         arrValue1 = arrValue1.astype('float')
         print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)       
         strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
-        strMeansInfo = 'Min, Mean, SD, Median, Max of scaled T2 data: \n'
-        arrValue1 = preprocessing.scale(arrValue1)              
-        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)
+        
+        # TODO! before scaling: eliminate 'outliers'
+        # consider values lower than 1st percentile and greater than 99th percentile: outliers!
+        # exclude them and perform scaling without them
+        percentile1 = np.percentile(arrValue1, 1)
+        percentile99 = np.percentile(arrValue1, 99)
+        print 'computed percentile1 = ', percentile1, ' percentile99 = ', percentile99
+        arrValue1OutliersSmall = arrValue1[arrValue1 <= percentile1]
+        arrValue1OutliersBig = arrValue1[arrValue1 >= percentile99]
+        arrValue1NoOutliers = arrValue1[(arrValue1 > percentile1) & (arrValue1 < percentile99)]
+        print 'num of Voxelx changed from ', len(arrValue1), ' to ', len(arrValue1NoOutliers), ' eliminated ', len(arrValue1OutliersSmall), ' and ', len(arrValue1OutliersBig)
+        
+        # scale the T2 data without outliers
+        arrValue1NoOutliersScaled = preprocessing.scale(arrValue1NoOutliers)
+        
+        # for comparison also scale the data WITH outliers
+        arrValue1Scaled = preprocessing.scale(arrValue1)  
+        print 'arrValue1Scaled -------------------------------------', np.min(arrValue1Scaled), np.mean(arrValue1Scaled), np.std(arrValue1Scaled), np.median(arrValue1Scaled), np.max(arrValue1Scaled)
+        print 'arrValue1NoOutliersScaled ---------------------------', np.min(arrValue1NoOutliersScaled), np.mean(arrValue1NoOutliersScaled), np.std(arrValue1NoOutliersScaled), np.median(arrValue1NoOutliersScaled), np.max(arrValue1NoOutliersScaled)
+        
+        # for further analysis ADD the eliminated outliers, applied a correction to them
+        
+        scaler = preprocessing.StandardScaler().fit(arrValue1NoOutliers)
+        print scaler
+        print scaler.mean_                                      
+        print scaler.std_    
+        arrValue1NoOutliersScaled2 = scaler.transform(arrValue1NoOutliers)
+        # print out the result, just for test:
+        print 'arrValue1NoOutliersScaled2 ---------------------------', np.min(arrValue1NoOutliersScaled2), np.mean(arrValue1NoOutliersScaled2), np.std(arrValue1NoOutliersScaled2), np.median(arrValue1NoOutliersScaled2), np.max(arrValue1NoOutliersScaled2)
+        # apply this transformation to the outliers        
+        arrValue1OutliersSmallScaled = scaler.transform(arrValue1OutliersSmall)   
+        arrValue1OutliersBigScaled = scaler.transform(arrValue1OutliersBig)   
+        # add this data to the array
+        idxSmall = [arrValue1 <= percentile1]
+        idxOK = [(arrValue1 > percentile1) & (arrValue1 < percentile99)]
+        idxBig = [arrValue1 >= percentile99]
+        arrValue1[idxSmall] = arrValue1OutliersSmallScaled
+        arrValue1[idxBig] = arrValue1OutliersBigScaled
+        arrValue1[idxOK] = arrValue1NoOutliersScaled2
+        # now arrValue1 contains all the original data, scaled!!! using only non-outliers data
+        print 'arrValue1NoOutliersScaledAddedScaledOutliers!! --------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)
+
+        #print arrValue1NoOutliersScaled.mean(axis=0)
+        #print arrValue1NoOutliersScaled.mean()
+        #print arrValue1NoOutliersScaled.std(axis=0)
+        #print arrValue1NoOutliersScaled.std()
+        #sys.exit(0)
+        
+        
+        strMeansInfo = 'Min, Mean, SD, Median, Max of arrValue1NoOutliersScaledAddedScaledOutliers T2 data: \n'
+        #arrValue1 = preprocessing.scale(arrValue1)              
+        #print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)
         strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
         ##################################################################################
         arrDivGradn1 = arrDivGradn[mask != 0]
@@ -739,7 +788,7 @@ if __name__ == '__main__':
         fT2intensInfo.write('smallerThen ' + str(p) + ' arrValue1Cortex = ' + str(num) + ' from ' + str(sizeNCortex) + ' % = ' + str(np.round(num * 100.0 / sizeNCortex)) + ' arrValue1CortexNoZeros = ' + str(numNoZeros) + ' from ' + str(sizeNCortexNoZeros) + ' % = ' + str(np.round(numNoZeros * 100.0 / sizeNCortexNoZeros)) + '\n')    
     
     fT2intensInfo.close()
-    sys.exit(0)
+    #sys.exit(0)
 
     
     # if no columns diameter was given, then extract profiles in the mask
@@ -812,7 +861,7 @@ if __name__ == '__main__':
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide), '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
               
         # TODO : delete it!      
-        sys.exit()
+        #sys.exit()
         
         result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, volMask)   
         
@@ -874,14 +923,14 @@ if __name__ == '__main__':
     volColouredByAvgDivGrads = result2[8]
     listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
     listOfAvgVoxelCoords = result2[10]
-    strMeansInfo = result2[11]
+    strMeansInfo = result2[11]  # add it to the file
     addedColumnsDiamName = ''
     pathForFiles = directory
     print '############################################ columnDiameter = ', str(columnDiameter)
     if columnDiameter is not None:
         addedColumnsDiamName = '_diam%s' %(columnDiameter)
         # TODO: delete it after the tests!
-        addedColumnsDiamName = addedColumnsDiamName + '_scaled'        
+        addedColumnsDiamName = addedColumnsDiamName + '_scaledNoOutliersAddedOutliers'        
 
         # if the result was for the columns, create a separate folder for it
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)
