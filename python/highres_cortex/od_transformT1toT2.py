@@ -185,7 +185,7 @@ def transformT1toT2(volT1, volT2, transformOther):
     #print volT1.header()
     vol_resamp = resampler1.doit(
         t1_to_t2, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]),
-        int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3]))
+        int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume()
     print 'given dims to resampler : ', newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2]
     print 'voxSize2 : ', voxSize2[:]
     print 'type voxSize2 : ', type(voxSize2)
@@ -205,7 +205,7 @@ def transformT1toT2(volT1, volT2, transformOther):
     print t2Translation
     vol_resamp2 = resampler2.doit(
         t2Translation, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]),
-        int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3]))
+        int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume()
     
     # save the results
     resList = [vol_resamp, vol_resamp2, t1_to_t2_original, t1_to_t2, t2Translation]
