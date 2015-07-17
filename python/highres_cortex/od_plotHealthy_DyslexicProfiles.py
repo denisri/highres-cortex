@@ -42,8 +42,7 @@
 
 
 # example how to run this file:
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotRightLeftProfiles.py -p ad140157 -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/
-
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotHealthy_DyslexicProfiles.py -c 5 -t 314 -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/
 import random
 from soma import aims, aimsalgo
 import subprocess
@@ -147,33 +146,43 @@ if __name__ == '__main__':
     
 
     
+    ##### try to change the order!!
+    # write out plots for healthy subjects
+    # for various mask ROIs
+    maskROIs = ['11', '21']
+    patientsLists = [healthyList, dyslexicList]
+    keywords = ['healthy', 'dyslexic']
     
-    
-    
-        #pathToProfL21 = glob.glob(directory + '%s/diam%s/%s_L_MaskROI21_profiles_diam%s_over_%s.txt' %(realPatientID, str(columnDiameter), realPatientID, str(columnDiameter), str(threshold)))
-        #pathToProfR21 = glob.glob(directory + '%s/diam%s/%s_R_MaskROI21_profiles_diam%s_over_%s.txt' %(realPatientID, str(columnDiameter), realPatientID, str(columnDiameter), str(threshold)))
-      
-      
-      
-        
-        
-        
-        
-    
-        
-        ## TODO: plot all healthy subjects 1 mask rOI to one figure
-        
-        
-        
-        ## for these left images plot also the right ones
-        #for i in pathToProfs:
-            #print 'file = ', i
-            ##correspRight = glob.glob(i.replace('_L_', '_R_'))
-            ##if len(correspRight) > 0:
-                ##print 'R = ', correspRight[0]
-                                
-                                
-                                
+    colours = ['b', 'g'] # , 'r', 'c', 'm', 'y', 'b']    
+    # for R and L 
+    for realSide in ['L', 'R']:
+        for listt, keyword in zip(patientsLists, keywords):            
+            healthyL_allROIs = plt.figure(figsize=(28, 18)) #, dpi=80, facecolor='w', edgecolor='k')
+            num = 1
+            for realPatientID in listt:
+                print '----------------- subject  ', realPatientID
+                ax1 = healthyL_allROIs.add_subplot(3,3,num)
+                ax1.set_title('Profile in %s all mask ROIs - %s' %(realPatientID, realSide))   # subplot 211 title
+                ax1.set_xlabel('Cortical depth')
+                ax1.set_ylabel('T2-nobias intensity')
+                for m, col in zip(maskROIs, colours):
+                    pathToProfL11 = glob.glob(directory + '%s/diam%s/%s_%s_MaskROI%s_profiles_diam%s_over_%s.txt' %(realPatientID, str(columnDiameter), realPatientID, realSide, m, (columnDiameter), str(threshold)))            
+                    #read in these files
+                    numbROIsL, coordROIsL, valueROIsL = np.loadtxt(pathToProfL11[0], skiprows = 1, unpack = True)                    
+                    ax1.plot(coordROIsL, valueROIsL, '.', c = col, label = realSide)
+                    #ax1.legend(loc='upper right', numpoints = 1)
+                num += 1        
+            plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/Data_diam%s_over%s/%s_%s_allMaskROIs.png' %(str(columnDiameter), str(threshold), keyword, realSide), bbox_inches='tight')    
+            plt.clf()
+            plt.close()
+                
+         
+         
+         
+
+
+
+                             
         
         
         

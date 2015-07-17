@@ -204,9 +204,10 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         # TODO! scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
         # important! need to transform them to float before!!!
         strMeansInfo = 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
+        print 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
         arrValue1 = arrValue1.astype('float')
-        print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)       
         strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
+        print '-----------------------------------------', strMeansInfo
         
         # TODO! before scaling: eliminate 'outliers'
         # consider values lower than 1st percentile and greater than 99th percentile: outliers!
@@ -224,18 +225,20 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         
         # for comparison also scale the data WITH outliers
         arrValue1Scaled = preprocessing.scale(arrValue1)  
-        print 'arrValue1Scaled -------------------------------------', np.min(arrValue1Scaled), np.mean(arrValue1Scaled), np.std(arrValue1Scaled), np.median(arrValue1Scaled), np.max(arrValue1Scaled)
-        print 'arrValue1NoOutliersScaled ---------------------------', np.min(arrValue1NoOutliersScaled), np.mean(arrValue1NoOutliersScaled), np.std(arrValue1NoOutliersScaled), np.median(arrValue1NoOutliersScaled), np.max(arrValue1NoOutliersScaled)
-        
-        # for further analysis ADD the eliminated outliers, applied a correction to them
-        
+        strMeansInfo = strMeansInfo + '\n Min, Mean, SD, Median, Max of (T2 scaled with outliers) data: \n'
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1Scaled)) + '\t' + str(np.mean(arrValue1Scaled)) + '\t' + str(np.std(arrValue1Scaled)) + '\t' + str(np.median(arrValue1Scaled)) + '\t' + str(np.max(arrValue1Scaled)) + '\n'
+        print strMeansInfo
+        ###-------------------
+        strMeansInfo = strMeansInfo + '\n Min, Mean, SD, Median, Max of (T2 scaled without outliers) data: \n'
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1NoOutliersScaled)) + '\t' + str(np.mean(arrValue1NoOutliersScaled)) + '\t' + str(np.std(arrValue1NoOutliersScaled)) + '\t' + str(np.median(arrValue1NoOutliersScaled)) + '\t' + str(np.max(arrValue1NoOutliersScaled)) + '\n'
+        print strMeansInfo
+         
+        # for further analysis ADD the eliminated outliers, applied a correction to them        
         scaler = preprocessing.StandardScaler().fit(arrValue1NoOutliers)
         print scaler
         print scaler.mean_                                      
         print scaler.std_    
         arrValue1NoOutliersScaled2 = scaler.transform(arrValue1NoOutliers)
-        # print out the result, just for test:
-        print 'arrValue1NoOutliersScaled2 ---------------------------', np.min(arrValue1NoOutliersScaled2), np.mean(arrValue1NoOutliersScaled2), np.std(arrValue1NoOutliersScaled2), np.median(arrValue1NoOutliersScaled2), np.max(arrValue1NoOutliersScaled2)
         # apply this transformation to the outliers        
         arrValue1OutliersSmallScaled = scaler.transform(arrValue1OutliersSmall)   
         arrValue1OutliersBigScaled = scaler.transform(arrValue1OutliersBig)   
@@ -247,8 +250,9 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         arrValue1[idxBig] = arrValue1OutliersBigScaled
         arrValue1[idxOK] = arrValue1NoOutliersScaled2
         # now arrValue1 contains all the original data, scaled!!! using only non-outliers data
-        print 'arrValue1NoOutliersScaledAddedScaledOutliers!! --------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)
-
+        strMeansInfo = strMeansInfo + '\n Min, Mean, SD, Median, Max of (T2 scaled without outliers, added scaled outliers) data: \n'
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
+        print strMeansInfo
         #print arrValue1NoOutliersScaled.mean(axis=0)
         #print arrValue1NoOutliersScaled.mean()
         #print arrValue1NoOutliersScaled.std(axis=0)
@@ -256,10 +260,8 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         #sys.exit(0)
         
         
-        strMeansInfo = 'Min, Mean, SD, Median, Max of arrValue1NoOutliersScaledAddedScaledOutliers T2 data: \n'
         #arrValue1 = preprocessing.scale(arrValue1)              
         #print '-----------------------------------------', np.min(arrValue1), np.mean(arrValue1), np.std(arrValue1), np.median(arrValue1), np.max(arrValue1)
-        strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
         ##################################################################################
         arrDivGradn1 = arrDivGradn[mask != 0]
         arrColouredVol1 = np.where(mask != 0)
@@ -730,10 +732,15 @@ if __name__ == '__main__':
     #print 'mean arrValue1Cortex = ', meanV, ' sd= ', sdV, ' mean +- 3sd = (', lowerOutlierBorder, ' , ', upperOutlierBorder, '), percentiles : (' , lowerPercentage, upperPercentage, ')'
     #fT2intensInfo.write('mean arrValue1Cortex = ' + str(np.round(meanV)) + ' sd= ' + str(np.round(sdV)) + ' mean +- 3sd = (' + str(lowerOutlierBorder) + ' , '+ str(upperOutlierBorder) + '), percentiles : (' + str(lowerPercentage) + ' , ' + str(upperPercentage) + ')\n')
     
+    
+    # TODO: looks like the problem is here:
+    print 'problem?  ', np.mean(arrValue1Cortex)
+    
+    
+    
+    
     computeRanges(arrValue1Cortex, fT2intensInfo, 'cortexROIs')
     
-    
-
 
     ######################## simulate the same EXCLUDING zeros (supposably segmentation errors)
     numZeros = len(np.where(arrValue1Cortex == 0)[0])
@@ -786,8 +793,6 @@ if __name__ == '__main__':
         numNoZeros = len(np.where(arrValue1CortexNoZeros < p)[0])
         print 'smallerThen ', p, ' arrValue1Cortex = ', num, ' from ', sizeNCortex, ' % = ', np.round(num * 100.0 / sizeNCortex),  ' arrValue1CortexNoZeros = ', numNoZeros, ' from ', sizeNCortexNoZeros, ' % = ', np.round(numNoZeros * 100.0 / sizeNCortexNoZeros) 
         fT2intensInfo.write('smallerThen ' + str(p) + ' arrValue1Cortex = ' + str(num) + ' from ' + str(sizeNCortex) + ' % = ' + str(np.round(num * 100.0 / sizeNCortex)) + ' arrValue1CortexNoZeros = ' + str(numNoZeros) + ' from ' + str(sizeNCortexNoZeros) + ' % = ' + str(np.round(numNoZeros * 100.0 / sizeNCortexNoZeros)) + '\n')    
-    
-    fT2intensInfo.close()
     #sys.exit(0)
 
     
@@ -810,7 +815,7 @@ if __name__ == '__main__':
         print 'heights of the cortical columns found heightMin = ', heightMin, ' heightMax = ', heightMax
         #heights = range(heightMin, heightMax + 1)
         # just for test: to see the influence of really large columns
-        heights = range(heightMin - 1, heightMax + 2)
+        heights = range(heightMin - 1, heightMax)
         print ' ##################################################### heights = ', heights
        # using this info: calculate minimal cortical column sizes
         
@@ -924,13 +929,16 @@ if __name__ == '__main__':
     listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
     listOfAvgVoxelCoords = result2[10]
     strMeansInfo = result2[11]  # add it to the file
+    fT2intensInfo.write('\n' + strMeansInfo + '\n')
+    fT2intensInfo.close()
+    #sys.exit(0)
     addedColumnsDiamName = ''
     pathForFiles = directory
     print '############################################ columnDiameter = ', str(columnDiameter)
     if columnDiameter is not None:
         addedColumnsDiamName = '_diam%s' %(columnDiameter)
         # TODO: delete it after the tests!
-        addedColumnsDiamName = addedColumnsDiamName + '_scaledNoOutliersAddedOutliers'        
+        addedColumnsDiamName = addedColumnsDiamName + '_scaledNoOutlAddOutl'        
 
         # if the result was for the columns, create a separate folder for it
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)

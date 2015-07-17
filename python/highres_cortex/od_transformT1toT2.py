@@ -58,12 +58,13 @@ import highres_cortex.od_cutOutRois
 from soma.aims import volumetools
 
 
-brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
+brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/' # DB of original T1 images
 brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
 pathToTextures = '/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
 # T2 images after bias correction with parameters (field rigidity = 5, sampling = 4) optimized on 16.02.2015
-#pathToNobiasT2 = '/neurospin/lnao/dysbrain/nobiasT2_FR5_S4/'
-pathToNobiasT2 = '/neurospin/lnao/dysbrain/nobiasT2_FR5_S16/'
+#pathToNobiasT2 = '/neurospin/lnao/dysbrain/nobia -dsT2_FR5_S16/'
+# TODO! changed this DB for the one with corrected/cropped/nobias T2 images
+pathToNobiasT2 = '/neurospin/lnao/dysbrain/brainvisa_db_T2_cropped/dysbrain/'
 
 #volT1 = aims.read('/volatile/od243208/brainvisa_db_morphologist/dysbrain/ac140155/t1mri/reversed_t1map_2/ac140155.nii.gz')
 #volT2 = aims.read('/volatile/od243208/raw_niftis/ac140155/20140703_152737t2spctraiso05mmVOIs011a1001.nii.gz')
@@ -183,6 +184,7 @@ def transformT1toT2(volT1, volT2, transformOther):
     resampler1.setRef(volT1)
     print '------------- RESAMPLER:  ---------  volT1.header()  ----------------------'
     #print volT1.header()
+    print t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2
     vol_resamp = resampler1.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
     print 'given dims to resampler : ', newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2]
     print 'voxSize2 : ', voxSize2[:]
@@ -213,45 +215,45 @@ def transformT1toT2(volT1, volT2, transformOther):
     if transformOther:
         print 'start transforming other volumes : ' , str(transformOther)
          
-        #for realSide in ['L', 'R']:            
-            ## 1. GW classif
-            #volsGWlist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
-            #if len(volsGWlist) == 1:
-                #volGW = aims.read(volsGWlist[0])
-                #print 'Took the volGW: ', volsGWlist[0]
-                ## GW volume is resampled as the NN (0)
-                #resampler3 = aims.ResamplerFactory_S16().getResampler(0)
-                #resampler3.setRef(volGW)
-                #vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
-                #vols.append(vol_resamp3)
-                #print 'resampled the initial GW %s ' %(realSide)
-                #names.append('_GW_%s_T1inNewT2.nii.gz' %(realSide))
+        for realSide in ['L', 'R']:            
+            # 1. GW classif
+            volsGWlist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
+            if len(volsGWlist) == 1:
+                volGW = aims.read(volsGWlist[0])
+                print 'Took the volGW: ', volsGWlist[0]
+                # GW volume is resampled as the NN (0)
+                resampler3 = aims.ResamplerFactory_S16().getResampler(0)
+                resampler3.setRef(volGW)
+                vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
+                vols.append(vol_resamp3)
+                print 'resampled the initial GW %s ' %(realSide)
+                names.append('_GW_%s_T1inNewT2.nii.gz' %(realSide))
             
                 
-            ## 2. skeletons
-            #sulcilist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
-            #if len(sulcilist) == 1: 
-                #sulci = aims.read(sulcilist[0])
-                #print 'Took the sulci: ', sulcilist[0]         
-                ## Skeletons are resampled as NN, too (0)
-                #resampler4 = aims.ResamplerFactory_S16().getResampler(0)
-                #resampler4.setRef(sulci)
-                #vol_resamp4 = resampler4.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
-                #vols.append(vol_resamp4)    
-                #print 'resampled the initial T1 %s skeleton ' %(realSide)
-                #names.append('_sulciSkel_%s_T1inNewT2.nii.gz' %(realSide))
+            # 2. skeletons
+            sulcilist = glob.glob(brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID))   # ok only if there is one file
+            if len(sulcilist) == 1: 
+                sulci = aims.read(sulcilist[0])
+                print 'Took the sulci: ', sulcilist[0]         
+                # Skeletons are resampled as NN, too (0)
+                resampler4 = aims.ResamplerFactory_S16().getResampler(0)
+                resampler4.setRef(sulci)
+                vol_resamp4 = resampler4.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
+                vols.append(vol_resamp4)    
+                print 'resampled the initial T1 %s skeleton ' %(realSide)
+                names.append('_sulciSkel_%s_T1inNewT2.nii.gz' %(realSide))
                 
-            ## 3. textures        
-            ## to transform texture: need to transform the corresponding mesh
-            #fileHemi = glob.glob(brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide))
-            #if len(fileHemi) == 1:
-                #print 'found the hemisphere file : ', fileHemi 
-                ## resample the hemisphere
-                #volHemi = aims.read(fileHemi[0])
-                #aims.SurfaceManip.meshTransform(volHemi, t1_to_t2)
-                #print 'resampled the initial T1 %s hemisphere ' %(realSide)
-                #vols.append(volHemi)    
-                #names.append('_hemi_%s_T1inNewT2.gii' %(realSide))     
+            # 3. textures        
+            # to transform texture: need to transform the corresponding mesh
+            fileHemi = glob.glob(brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide))
+            if len(fileHemi) == 1:
+                print 'found the hemisphere file : ', fileHemi 
+                # resample the hemisphere
+                volHemi = aims.read(fileHemi[0])
+                aims.SurfaceManip.meshTransform(volHemi, t1_to_t2)
+                print 'resampled the initial T1 %s hemisphere ' %(realSide)
+                vols.append(volHemi)    
+                names.append('_hemi_%s_T1inNewT2.gii' %(realSide))     
                 
         ## 4. B1 map        
         #fileB1 = glob.glob(brainvisa_raw_niftis + '%s/*b1map*.nii.gz' %(realPatientID))           
@@ -267,18 +269,18 @@ def transformT1toT2(volT1, volT2, transformOther):
             #names.append('_B1map_inNewT2.nii.gz')
 
  
-         # 5. GRE...       
-        fileGre = glob.glob(brainvisa_raw_niftis + '%s/*dpgreiso*.nii.gz' %(realPatientID))           
-        if len(fileGre) == 1:
-            print 'found the fileGre file : ', fileGre[0] 
-            # resample the hemisphere
-            volGre = aims.read(fileGre[0])
-            resampler6 = aims.ResamplerFactory_S16().getResampler(1)
-            resampler6.setRef(volGre)
-            vol_resamp6 = resampler6.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
-            vols.append(vol_resamp6)    
-            print 'resampled the Gre '
-            names.append('_Gre_inNewT2.nii.gz')
+         ## 5. GRE...       
+        #fileGre = glob.glob(brainvisa_raw_niftis + '%s/*dpgreiso*.nii.gz' %(realPatientID))           
+        #if len(fileGre) == 1:
+            #print 'found the fileGre file : ', fileGre[0] 
+            ## resample the hemisphere
+            #volGre = aims.read(fileGre[0])
+            #resampler6 = aims.ResamplerFactory_S16().getResampler(1)
+            #resampler6.setRef(volGre)
+            #vol_resamp6 = resampler6.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
+            #vols.append(vol_resamp6)    
+            #print 'resampled the Gre '
+            #names.append('_Gre_inNewT2.nii.gz')
 
             
         ############################## problem: doing this outside of this function leads to errors!!! #########################
@@ -353,8 +355,7 @@ if __name__ == '__main__':
             #volT2list = glob.glob(brainvisa_raw_niftis + realPatientID + '/*t2*.nii.gz')   # ok only if there is one t2-file, or the first one of the t2-files is correct
           
             # work with T2 image after the bias correction!!
-            volT2list = glob.glob(pathToNobiasT2 + 'nobias_%s.nii.gz' %(realPatientID))   # ok only if there is one t2-file, or the first one of the t2-files is correct
-            
+            volT2list = glob.glob(pathToNobiasT2 + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))   # ok only if there is one t2-file, or the first one of the t2-files is correct
             if len(volT2list) == 1: #finder2.check(volT2)
                 volT2 = volT2list[0]         
                 print 'Took the standard T2 file: ', volT2
@@ -441,7 +442,14 @@ if __name__ == '__main__':
         volsToCrop.append(aims.read(pathToVol2))
         namesNewCropp = []
         namesNewCropp.append('_NewT2_cropped.nii.gz')
-
+        
+        
+        
+        
+        
+        
+        # TODO!! do not need to crop them now!!! it should be in the transformation???? ########################
+        ########################################################################################################
         # if other volumes were transformed : crop them, too
         print 'other volumes were transformed : crop them, too'
         if transformOtherVolumes:
@@ -459,6 +467,10 @@ if __name__ == '__main__':
                 print 'initial file : ', resultDirectory + keyWord + namesNew[i], ' newCroppedName: ', nameCropped
                 namesNewCropp.append(nameCropped)        
             
+        # TODO!! do not need to crop them now!!! it should be in the transformation???? ########################
+        ########################################################################################################
+        sys.exit(0)
+        
         # crop these volumes using Denis's function and save them
         print 'start cropping the volumes'
         vol1tVol = aims.read(pathToVol1)
