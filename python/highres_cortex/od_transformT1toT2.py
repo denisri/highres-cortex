@@ -47,6 +47,7 @@
 # example how to run this file:
 # python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /volatile/od243208/brainvisa_manual/testT1toT2_LinearWithHemi/ -r /neurospin/lnao/dysbrain/raw_niftis/
 
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /neurospin/lnao/dysbrain/testNewT1toNewT2/ -o -r /neurospin/lnao/dysbrain/raw_niftis/
 import random
 from soma import aims, aimsalgo
 import subprocess
@@ -141,9 +142,9 @@ def transformT1toT2(volT1, volT2, transformOther):
     print t1_to_t2
     
     # modify the transformation to compensate for these negative shifts
-    t1_to_t2.translation()[0] -= shiftX
-    t1_to_t2.translation()[1] -= shiftY
-    t1_to_t2.translation()[2] -= shiftZ
+    #t1_to_t2.translation()[0] -= shiftX
+    #t1_to_t2.translation()[1] -= shiftY
+    #t1_to_t2.translation()[2] -= shiftZ
     
     print 'modified transformation t1_to_t2 translation : '
     print t1_to_t2
@@ -228,7 +229,7 @@ def transformT1toT2(volT1, volT2, transformOther):
                 # GW volume is resampled as the NN (0)
                 resampler3 = aims.ResamplerFactory_S16().getResampler(0)
                 resampler3.setRef(volGW)
-                vol_resamp3 = resampler3.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
+                vol_resamp3 = resampler3.doit(t1_to_t2, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]), int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume()
                 vols.append(vol_resamp3)
                 print 'resampled the initial GW %s ' %(realSide)
                 names.append('_GW_%s_T1inNewT2.nii.gz' %(realSide))
@@ -242,7 +243,7 @@ def transformT1toT2(volT1, volT2, transformOther):
                 # Skeletons are resampled as NN, too (0)
                 resampler4 = aims.ResamplerFactory_S16().getResampler(0)
                 resampler4.setRef(sulci)
-                vol_resamp4 = resampler4.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)    
+                vol_resamp4 = resampler4.doit(t1_to_t2, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]), int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume() 
                 vols.append(vol_resamp4)    
                 print 'resampled the initial T1 %s skeleton ' %(realSide)
                 names.append('_sulciSkel_%s_T1inNewT2.nii.gz' %(realSide))
@@ -378,7 +379,8 @@ if __name__ == '__main__':
         if options.recursiveInDirectory is not None:
             # process all subjects in a given directory
             recursiveInDirectory = options.recursiveInDirectory
-            subjectList = [o for o in os.listdir(recursiveInDirectory) if os.path.isdir(os.path.join(recursiveInDirectory,o))]            
+            subjectList = [o for o in os.listdir(recursiveInDirectory) if os.path.isdir(os.path.join(recursiveInDirectory,o))]     
+            print 'subjectList ', subjectList
         else:
             # exit. nothing was given        
             print >> sys.stderr, 'New: exit. neither realPatientID nor the folder for the processing was given'
@@ -402,7 +404,7 @@ if __name__ == '__main__':
             #volT2list = glob.glob(brainvisa_raw_niftis + realPatientID + '/*t2*.nii.gz')   # ok only if there is one t2-file, or the first one of the t2-files is correct
     
             # work with T2 image after the bias correction!!
-            volT2list = glob.glob(pathToNobiasT2 + 'nobias_%s.nii.gz' %(realPatientID))   # ok only if there is one t2-file, or the first one of the t2-files is correct
+            volT2list = glob.glob(pathToNobiasT2 + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))   # ok only if there is one t2-file, or the first one of the t2-files is correct
  
             if len(volT2list) == 1: # finder2.check(volT2):
                 volT2 = volT2list[0]
@@ -448,44 +450,36 @@ if __name__ == '__main__':
         namesNewCropp.append('_NewT2_cropped.nii.gz')
         
         
-        
-        
-        
-        
-        # TODO!! do not need to crop them now!!! it should be in the transformation???? ########################
+        # TODO!! do not need to crop them now!!! it should be in the transformation! ########################
         ########################################################################################################
         # if other volumes were transformed : crop them, too
-        print 'other volumes were transformed : crop them, too'
+        #print 'other volumes were transformed : crop them, too'
         if transformOtherVolumes:
             volsNew = vols[5]
             namesNew = vols[6]            
           
-            print 'create new CroppedNames:'
+            #print 'create new CroppedNames:'
             for i in range(len(volsNew)):
                 # write out the volume transformed into ne new T2 space
                 aims.write(volsNew[i], resultDirectory + keyWord + namesNew[i])
                 # read it in for the cropping
-                volsToCrop.append(aims.read(resultDirectory + keyWord + namesNew[i]))
+                #volsToCrop.append(aims.read(resultDirectory + keyWord + namesNew[i]))
                 # get the name for the new cropped file
-                nameCropped = namesNew[i].replace('_T1inNewT2', '_T1inNewT2_cropped')
-                print 'initial file : ', resultDirectory + keyWord + namesNew[i], ' newCroppedName: ', nameCropped
-                namesNewCropp.append(nameCropped)        
-            
-        # TODO!! do not need to crop them now!!! it should be in the transformation???? ########################
-        ########################################################################################################
-        sys.exit(0)
-        
+                #nameCropped = namesNew[i].replace('_T1inNewT2', '_T1inNewT2_cropped')
+                #print 'initial file : ', resultDirectory + keyWord + namesNew[i], ' newCroppedName: ', nameCropped
+                #namesNewCropp.append(nameCropped)        
+                 
         # crop these volumes using Denis's function and save them
-        print 'start cropping the volumes'
+        #print 'start cropping the volumes'
         vol1tVol = aims.read(pathToVol1)
-        cropped = volumetools.crop_volumes(vol1tVol, volsToCrop, threshold=80, border=10)
-        aims.write(cropped[0], resultDirectory + keyWord + '_T1inNewT2_cropped.nii.gz')
+        ##cropped = volumetools.crop_volumes(vol1tVol, volsToCrop, threshold=80, border=10)
+        #aims.write(cropped[0], resultDirectory + keyWord + '_T1inNewT2_cropped.nii.gz')
         
-        for i in range(1, len(cropped)):
-            print i, ' write file: ', resultDirectory + keyWord + namesNewCropp[i-1]
-            aims.write(cropped[i], resultDirectory + keyWord + namesNewCropp[i-1])
+        #for i in range(1, len(cropped)):
+            #print i, ' write file: ', resultDirectory + keyWord + namesNewCropp[i-1]
+            #aims.write(cropped[i], resultDirectory + keyWord + namesNewCropp[i-1])
 
-        print 'done cropping the volumes'
+        #print 'done cropping the volumes'
 
  
     

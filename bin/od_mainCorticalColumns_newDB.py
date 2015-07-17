@@ -46,13 +46,14 @@
 # it launches scripts by Yann Leprince: dist, heat, isovolume, column-regions to compute 'cortical columns'
 
 # od_mainCorticalColumns.py -p ad140157 -s R -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/ad140157_T1inT2_ColumnsCutNew20It/ -e -r
-
 # od_mainCorticalColumns.py -p md140208 -s L -d /volatile/od243208/brainvisa_manual/md140208_T1inT2_ColumnsNew/ -e -r
 
+
+
+
 # similar to od_mainCorticalColumns.py,, only adapted to the new databases!!!!!
-
-
-
+# how to run this file
+#/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r
 
 
 
@@ -67,7 +68,7 @@ import highres_cortex.od_cutOutRois
 brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
 brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
 pathToTextures = '/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
-pathToTrm = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/'  
+pathToTrm = '/neurospin/lnao/dysbrain/testNewT1toNewT2/'  
 patientID = None              # subject000
 realSide = 'L'
 hemisphere = 'left'
@@ -249,7 +250,8 @@ if cutOut is True:
     ################################
     # TODO !!!!!!!!!! need to check this transformation!!!! ##########
     ################################
-    fileHemi = pathToTrm + 'Hemi/%s_hemi_%s_T1inNewT2_cropped.gii' %(realPatientID, realSide)
+    #fileHemi = pathToTrm + 'Hemi/%s_hemi_%s_T1inNewT2_cropped.gii' %(realPatientID, realSide)
+    fileHemi = pathToTrm + '%s/%s_hemi_%s_T1inNewT2.gii' %(realPatientID, realPatientID, realSide)    
 
     # brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide)        
     print 'found the hemisphere file : ', fileHemi
@@ -280,7 +282,7 @@ if cutOut is True:
     
 
 # TODO- delete it after test!!!!
-sys.exit(0)
+#sys.exit(0)
     
 ############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
 print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
