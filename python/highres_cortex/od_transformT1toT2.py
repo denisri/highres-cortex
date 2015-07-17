@@ -97,7 +97,7 @@ def transformT1toT2(volT1, volT2, transformOther):
     transform1 = header1['transformations'][0]
     affineTransform1 = aims.AffineTransformation3d(transform1)
     transform2 = header2['transformations'][0]
-    dims2 = header2['volume_dimension']    
+    dims2 = volT2.getSize()
     voxSize2 = header2['voxel_size']
     affineTransform2 = aims.AffineTransformation3d(transform2)
     t1_to_t2_original = affineTransform2.inverse() * affineTransform1
@@ -185,7 +185,9 @@ def transformT1toT2(volT1, volT2, transformOther):
     print '------------- RESAMPLER:  ---------  volT1.header()  ----------------------'
     #print volT1.header()
     print t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2
-    vol_resamp = resampler1.doit(t1_to_t2, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
+    vol_resamp = resampler1.doit(
+        t1_to_t2, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]),
+        int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume()
     print 'given dims to resampler : ', newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2]
     print 'voxSize2 : ', voxSize2[:]
     print 'type voxSize2 : ', type(voxSize2)
@@ -203,7 +205,9 @@ def transformT1toT2(volT1, volT2, transformOther):
     resampler2.setRef(volT2)
     print 'transformation to be applied to the T2 volume: '
     print t2Translation
-    vol_resamp2 = resampler2.doit(t2Translation, newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2], voxSize2)
+    vol_resamp2 = resampler2.doit(
+        t2Translation, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]),
+        int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume()
     
     # save the results
     resList = [vol_resamp, vol_resamp2, t1_to_t2_original, t1_to_t2, t2Translation]
