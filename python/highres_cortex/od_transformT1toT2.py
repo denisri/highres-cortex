@@ -47,7 +47,9 @@
 # example how to run this file:
 # python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /volatile/od243208/brainvisa_manual/testT1toT2_LinearWithHemi/ -r /neurospin/lnao/dysbrain/raw_niftis/
 
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /neurospin/lnao/dysbrain/testNewT1toNewT2/ -o -r /neurospin/lnao/dysbrain/raw_niftis/
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_transformT1toT2.py -d /neurospin/lnao/dysbrain/testNewT1toNewT2_2/ -o -r /neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/
+
+
 import random
 from soma import aims, aimsalgo
 import subprocess
@@ -59,16 +61,6 @@ import highres_cortex.od_cutOutRois
 from soma.aims import volumetools
 
 
-brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/' # DB of original T1 images
-brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
-pathToTextures = '/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
-# T2 images after bias correction with parameters (field rigidity = 5, sampling = 4) optimized on 16.02.2015
-#pathToNobiasT2 = '/neurospin/lnao/dysbrain/nobia -dsT2_FR5_S16/'
-# TODO! changed this DB for the one with corrected/cropped/nobias T2 images
-pathToNobiasT2 = '/neurospin/lnao/dysbrain/brainvisa_db_T2_cropped/dysbrain/'
-
-#volT1 = aims.read('/volatile/od243208/brainvisa_db_morphologist/dysbrain/ac140155/t1mri/reversed_t1map_2/ac140155.nii.gz')
-#volT2 = aims.read('/volatile/od243208/raw_niftis/ac140155/20140703_152737t2spctraiso05mmVOIs011a1001.nii.gz')
 def transformT1toT2(volT1, volT2, transformOther):
     import numpy as np
     # get the bounding box of T1 (in pixels)
@@ -127,30 +119,24 @@ def transformT1toT2(volT1, volT2, transformOther):
 
     if min(xCoords_new) < 0 :
         shiftX = min(xCoords_new)
-        #xCoords_new = [i - m for i in xCoords_new]    
         
     if min(yCoords_new) < 0 :
         shiftY = min(yCoords_new)
-        #yCoords_new = [i - m for i in yCoords_new]
     
     if min(zCoords_new) < 0 :
         shiftZ = min(zCoords_new)
-        #zCoords_new = [i - m for i in zCoords_new]
     
     print 'correction X, Y, Z: ', shiftX, shiftY, shiftZ
     print 'transformation t1_to_t2 : '
     print t1_to_t2
     
-    # modify the transformation to compensate for these negative shifts
+    # modify the transformation to compensate for these negative shifts - DO NOT do this anymore, was already compensated!!
     #t1_to_t2.translation()[0] -= shiftX
     #t1_to_t2.translation()[1] -= shiftY
-    #t1_to_t2.translation()[2] -= shiftZ
-    
-    print 'modified transformation t1_to_t2 translation : '
-    print t1_to_t2
-    
-    # todo! need to increase the size of the resulting volume!
-    
+    #t1_to_t2.translation()[2] -= shiftZ    
+    #print 'modified transformation t1_to_t2 translation : '
+    #print t1_to_t2
+        
     #for i in range(0,8):
         #print 'old point coords ', xCoords[i], yCoords[i], zCoords[i]
         #print 'new point coords ', xCoords_new[i], yCoords_new[i], zCoords_new[i]
@@ -190,15 +176,12 @@ def transformT1toT2(volT1, volT2, transformOther):
         t1_to_t2, int(newMaxX/voxSize2[0]), int(newMaxY/voxSize2[1]),
         int(newMaxZ/voxSize2[2]), aims.Point3df(*voxSize2[:3])).volume()
     print 'given dims to resampler : ', newMaxX/voxSize2[0], newMaxY/voxSize2[1], newMaxZ/voxSize2[2]
-    print 'voxSize2 : ', voxSize2[:]
-    print 'type voxSize2 : ', type(voxSize2)
+    print 'voxSize2 : ', voxSize2[:], ' type voxSize2 : ', type(voxSize2)
     print 'type: newMaxX/voxSize2[0] ', type(newMaxX/voxSize2[0])
 
     
     # now need to apply the same translation to the T2 volume
     t2Translation = aims.AffineTransformation3d()
-    #t2Translation.translation()[:] = t1_to_t2.translation()[:]    
-    #t2Translation.translation()[:] = [- t1_to_t2.translation()[0], - t1_to_t2.translation()[1], - t1_to_t2.translation()[2]]   
     t2Translation.translation()[:] = [- shiftX, - shiftY, - shiftZ]   
     
     # modified! Resample volT2 with LINEAR interpolation!!! (1). and not with NN (0).
@@ -320,14 +303,24 @@ if __name__ == '__main__':
     transformOtherVolumes = False       # False, so transform and cut only the T2 volume. Else, work with skeletons, textures and hemispheres, too
 
 
+    brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/' # DB of original T1 images (in T1 space)
+    brainvisa_raw_niftis = '/neurospin/lnao/dysbrain/raw_niftis/'
+    pathToTextures = '/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
+    # T2 images after bias correction with parameters (field rigidity = 5, sampling = 4) optimized on 16.02.2015
+    #pathToNobiasT2 = '/neurospin/lnao/dysbrain/nobia -dsT2_FR5_S16/'
+    # done! changed this DB for the one with corrected/cropped/nobias T2 images
+    pathToNobiasT2 = '/neurospin/lnao/dysbrain/brainvisa_db_T2_cropped/dysbrain/'
+    # for manual test: 
+    #volT1 = aims.read('/volatile/od243208/brainvisa_db_morphologist/dysbrain/ac140155/t1mri/reversed_t1map_2/ac140155.nii.gz')
+
     parser = OptionParser('Transform T1 volume into T2 space without cutting it')
-    parser.add_option('-i', dest='volT1', help='volT1. Optional')   
-    parser.add_option('-t', dest='volT2', help='volT2. Optional') 
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
-    parser.add_option('-k', dest='keyWord', help='keyWord')
     parser.add_option('-d', dest='directory', help='directory')
     parser.add_option('-r', dest='recursiveInDirectory', help='recursiveInDirectory')
     parser.add_option('-o', dest='transformOtherVolumes', action = 'store_true', help='Select if need to transform other volumes: skeletons, textures and hemispheres, too. False is default') 
+    parser.add_option('-i', dest='volT1', help='volT1. Optional')   
+    parser.add_option('-t', dest='volT2', help='volT2. Optional') 
+    parser.add_option('-k', dest='keyWord', help='keyWord. Optional')
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -346,21 +339,18 @@ if __name__ == '__main__':
         
         if options.volT1 is None:
             # volume T1 can be optionally given. If nothing is give: take the standard volume
-            volT1 = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID)  
+            volT1 = brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID, realPatientID)  
             print 'Took the standard T1 file: ', volT1
-            #print >> sys.stderr, 'New: exit. no volT1 given'
-            #sys.exit(1)
         else:
             volT1 = options.volT1
                 
         if options.volT2 is None:
-            # volume T21 can be optionally given. If nothing is give: take the standard volume
-            finder2 = aims.Finder()
-            
+            # volume T21 can be optionally given. If nothing is given: take the standard volume
+            finder2 = aims.Finder()            
             #volT2list = glob.glob(brainvisa_raw_niftis + realPatientID + '/*t2*.nii.gz')   # ok only if there is one t2-file, or the first one of the t2-files is correct
           
             # work with T2 image after the bias correction!!
-            volT2list = glob.glob(pathToNobiasT2 + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))   # ok only if there is one t2-file, or the first one of the t2-files is correct
+            volT2list = glob.glob(pathToNobiasT2 + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))   # ok only if there is 1 t2-file, or the 1st one is correct
             if len(volT2list) == 1: #finder2.check(volT2)
                 volT2 = volT2list[0]         
                 print 'Took the standard T2 file: ', volT2
@@ -394,15 +384,15 @@ if __name__ == '__main__':
         print '####################### process subject  ', realPatientID, '  ##############################################'
         # check if the destination folder exists. If not - create it
         resultDirectory = directory + realPatientID + '/'
+        if not os.path.exists(resultDirectory):
+            os.makedirs(resultDirectory)
 
         if len(subjectList) > 1 or volT1 is None:
-            volT1 = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID)  
+            volT1 = brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/%s.nii.gz' %(realPatientID, realPatientID)  
             print 'Took the standard T1 file: ', volT1
         
         if len(subjectList) > 1 or volT2 is None:
-            finder2 = aims.Finder()
-            #volT2list = glob.glob(brainvisa_raw_niftis + realPatientID + '/*t2*.nii.gz')   # ok only if there is one t2-file, or the first one of the t2-files is correct
-    
+            finder2 = aims.Finder()    
             # work with T2 image after the bias correction!!
             volT2list = glob.glob(pathToNobiasT2 + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))   # ok only if there is one t2-file, or the first one of the t2-files is correct
  
@@ -411,30 +401,26 @@ if __name__ == '__main__':
                 print 'Took the standard T2 file: ', volT2
             else:
                 print 'found ', len(volT2list), ' of volT2 files. Continue with the next subject'
-                continue
+                continue 
  
-        if not os.path.exists(resultDirectory):
-            os.makedirs(resultDirectory)
-
-        keyWord = realPatientID
-            
+        keyWord = realPatientID            
         vol1 = aims.read(volT1)
         vol2 = aims.read(volT2)    
 
         vols = transformT1toT2(vol1, vol2, transformOtherVolumes)
         vol1t = vols[0]
-        pathToVol1 = resultDirectory + keyWord + '_T1inNewT2.nii.gz'
-        aims.write(vol1t, pathToVol1)
+        #pathToVol1 = resultDirectory + keyWord + '_T1inNewT2.nii.gz'
+        #aims.write(vol1t, pathToVol1)  # do not need to write it anymore, as these files are already in a DB
         vol2t = vols[1]
-        pathToVol2 = resultDirectory + keyWord + '_NewT2.nii.gz'
-        aims.write(vol2t, pathToVol2)
+        #pathToVol2 = resultDirectory + keyWord + '_NewT2.nii.gz'
+        #aims.write(vol2t, pathToVol2)
         
         # save transformations
         t1_to_t2_original = vols[2]
         t1_to_t2 = vols[3]
         t2Translation = vols[4]
-        pathTot1_to_t2_original = resultDirectory + keyWord + '_t1_to_t2_original.trm'
-        aims.write(t1_to_t2_original, pathTot1_to_t2_original)
+        #pathTot1_to_t2_original = resultDirectory + keyWord + '_t1_to_t2_original.trm'
+        #aims.write(t1_to_t2_original, pathTot1_to_t2_original) # do not need it anymore, as cropping has already been included into the transformation
         
         pathTot1_to_t2 = resultDirectory + keyWord + '_t1_to_t2.trm'
         aims.write(t1_to_t2, pathTot1_to_t2)
@@ -443,14 +429,12 @@ if __name__ == '__main__':
         aims.write(t2Translation, pathTot2)
         
         
-        # Crop the transformed volumes using Denis's function
-        volsToCrop = []         # read in the volumes that will be cropped in the next step
-        volsToCrop.append(aims.read(pathToVol2))
-        namesNewCropp = []
-        namesNewCropp.append('_NewT2_cropped.nii.gz')
+        ## Crop the transformed volumes using Denis's function - ######## DO NOT need it anymore!!! ####### cropping was done for T2, and so to the other data ! ####
+        #volsToCrop = []         # read in the volumes that will be cropped in the next step
+        #volsToCrop.append(aims.read(pathToVol2))
+        #namesNewCropp = []
+        #namesNewCropp.append('_NewT2_cropped.nii.gz')
         
-        
-        # TODO!! do not need to crop them now!!! it should be in the transformation! ########################
         ########################################################################################################
         # if other volumes were transformed : crop them, too
         #print 'other volumes were transformed : crop them, too'
@@ -471,7 +455,7 @@ if __name__ == '__main__':
                  
         # crop these volumes using Denis's function and save them
         #print 'start cropping the volumes'
-        vol1tVol = aims.read(pathToVol1)
+        #vol1tVol = aims.read(pathToVol1)
         ##cropped = volumetools.crop_volumes(vol1tVol, volsToCrop, threshold=80, border=10)
         #aims.write(cropped[0], resultDirectory + keyWord + '_T1inNewT2_cropped.nii.gz')
         

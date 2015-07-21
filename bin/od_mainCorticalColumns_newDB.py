@@ -252,14 +252,12 @@ if cutOut is True:
     ################################
     #fileHemi = pathToTrm + 'Hemi/%s_hemi_%s_T1inNewT2_cropped.gii' %(realPatientID, realSide)
     fileHemi = pathToTrm + '%s/%s_hemi_%s_T1inNewT2.gii' %(realPatientID, realPatientID, realSide)    
-
-    # brainvisa_db_neurospin + '%s/t1mri/reversed_t1map_2/default_analysis/segmentation/mesh/%s_%shemi.gii' %(realPatientID, realPatientID, realSide)        
     print 'found the hemisphere file : ', fileHemi
     volHemi = aims.read(fileHemi)
     
         
     
-    #################### problem!!! Texture is still in the "old space". Need to transform it to the new space
+    #################### old : problem!!! Texture is still in the "old space". Need to transform it to the new space
     # read in the transformation file (from T1 into T2 space)
    # pathTot1_to_t2 = pathToTrm + realPatientID + '/%s_t1_to_t2.trm' % (realPatientID)
   #  transfT1toT2 = aims.read(pathTot1_to_t2)
@@ -280,10 +278,9 @@ if cutOut is True:
     pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
     aims.write(volGWCut, pathToClassifFile)
     
+    ################# ok till here for the new DB ####################
 
-# TODO- delete it after test!!!!
-#sys.exit(0)
-    
+# TODO!    - create sulci skeletons and use them for analysis !!!!!!!!!!!!!!!!!!!!!!!!!
 ############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
 print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
 if eliminateSulci is True:
@@ -515,12 +512,8 @@ if eliminateSulci is True:
 print 'after all: keyWord', keyWord, ' and pathToClassifFile ', pathToClassifFile
 
 
-
 ## launch the distance map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
 t0dist = timeit.default_timer()
-
-###################### TODO: check/correct/remove it
-###################### just for test!!!! give as another parameter GW classif file not extended!! to calculate profiles there later!!!
 
 # write out a file with commands
 commands = ''
@@ -529,6 +522,7 @@ commands = commands + 'od_distmapsMain.py \n' + 'time ' + 'od_distmapsMain.py ' 
 subprocess.check_call(['time', 'od_distmapsMain.py', 
 '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord]) #, '-j', pathToNotExendedGWClassif])
 t1dist = timeit.default_timer()
+
 
 ### launch the heat map calculation # classif file must be here with 100, 200, 0 (no 50 and 150)
 t0heat = timeit.default_timer()
