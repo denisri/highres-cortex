@@ -145,10 +145,10 @@ if options.workOnT1inT2Space is not None:
 if options.workOnLaptop is not None:
     workOnLaptop = options.workOnLaptop      
     # if true, then processes are run on the laptop. Change locations of neurospin DBs
-    brainvisa_db_neurospin = brainvisa_db_neurospin.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
-    brainvisa_raw_niftis = brainvisa_raw_niftis.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
-    pathToTextures = pathToTextures.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
-    pathToTrm = pathToTrm.replace('/neurospin/lnao/', '/volatile/od243208/neurospin/lnao/')
+    brainvisa_db_neurospin = brainvisa_db_neurospin.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+    brainvisa_raw_niftis = brainvisa_raw_niftis.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+    pathToTextures = pathToTextures.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+    pathToTrm = pathToTrm.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
     #brainvisa_db_neurospin = '/volatile/od243208/neurospin/lnao/dysbrain/brainvisa_db_morphologist/dysbrain/'
     #brainvisa_raw_niftis = '/volatile/od243208/neurospin/lnao/dysbrain/raw_niftis/'
     #pathToTextures = '/volatile/od243208/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
@@ -243,13 +243,6 @@ if cutOut is True:
     print 'found the texture file : ', fileTex
     texture = aims.read(fileTex) #    subject012_side0_texture.gii    
     # find the hemisphere file
-    
-    
-    
-    
-    ################################
-    # TODO !!!!!!!!!! need to check this transformation!!!! ##########
-    ################################
     #fileHemi = pathToTrm + 'Hemi/%s_hemi_%s_T1inNewT2_cropped.gii' %(realPatientID, realSide)
     fileHemi = pathToTrm + '%s/%s_hemi_%s_T1inNewT2.gii' %(realPatientID, realPatientID, realSide)    
     print 'found the hemisphere file : ', fileHemi
@@ -280,7 +273,6 @@ if cutOut is True:
     
     ################# ok till here for the new DB ####################
 
-# TODO!    - create sulci skeletons and use them for analysis !!!!!!!!!!!!!!!!!!!!!!!!!
 ############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
 print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
 if eliminateSulci is True:
