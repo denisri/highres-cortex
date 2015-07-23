@@ -1,3 +1,4 @@
+# Copyright Télécom ParisTech (2015).
 # Copyright CEA (2014).
 # Copyright Université Paris XI (2014).
 #
@@ -13,8 +14,10 @@ set(_commands
   ylAdvectTubes
   ylPropagateAlongField
   ylLabelEachVoxel
+  ylLaplacian
   ylMergeCortexColumnRegions
   ylMakeTraversePseudoAreaMap
+  ylUpwindDistance
 )
 
 include_directories("${CMAKE_BINARY_DIR}/include")
@@ -26,3 +29,14 @@ foreach(_command ${_commands})
                     DESTINATION bin
                     COMPONENT ${PROJECT_NAME})
 endforeach()
+
+set(OpenMP_commands
+  ylLaplacian
+)
+if(OPENMP_FOUND)
+  set_source_files_properties(${OpenMP_commands} PROPERTIES
+    COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+  # This is needed for GCC, untested with any other compiler.
+  set_target_properties(${OpenMP_commands} PROPERTIES
+    LINK_FLAGS ${OpenMP_CXX_FLAGS})
+endif()

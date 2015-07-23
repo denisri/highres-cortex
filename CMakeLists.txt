@@ -24,7 +24,7 @@ set(Boost_NO_BOOST_CMAKE ON)
 # contained in the FindBoost.cmake module provided with CMake. Hence, new
 # versions should be added here as they are released...
 set(Boost_ADDITIONAL_VERSIONS
-  "1.57.0" "1.57"
+  "1.58.0" "1.58" "1.57.0" "1.57"
   "1.56.0" "1.56" "1.55.0" "1.55" "1.54.0" "1.54" "1.53.0" "1.53" "1.52.0"
   "1.52" "1.51.0" "1.51" "1.50.0" "1.50" "1.49.0" "1.49")
 find_package(Boost 1.49 REQUIRED)
@@ -41,9 +41,12 @@ BRAINVISA_DEPENDENCY(DEV DEPENDS libboost DEV ">= 1.49")
 
 find_package(GSL REQUIRED)
 
+# OpenMP is optional
+find_package(OpenMP)
 
 find_package(python REQUIRED)
 
+# TODO Introduce optional dependence on Vip (for toplogy correction)
 
 BRAINVISA_COPY_PYTHON_DIRECTORY("${CMAKE_CURRENT_SOURCE_DIR}/python"
                                  ${PROJECT_NAME})

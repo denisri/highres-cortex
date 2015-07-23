@@ -1,3 +1,4 @@
+# Copyright Télécom ParisTech (2015).
 # Copyright CEA (2014).
 # Copyright Université Paris XI (2014).
 #
@@ -9,7 +10,9 @@
 # without any warranty.
 
 set(_headers
+  cortex.hh
   field.hh
+  front.hh
   advection.hh
   advection.tcc
   cortex_advection.hh
@@ -21,22 +24,41 @@ set(_headers
   iterative_region_merger.tcc
   cortex_column_region_quality.hh
   cortex_column_region_quality.tcc
+  laplace_solver.hh
+  laplace_solver.tcc
+  upwinding.hh
+  volume_util.hh
+  volume_util.tcc
 )
 set(_sources
   field.cc
+  front.cc
   advection.cc
   cortex_advection.cc
   propagate_along_field.cc
   label_volume.cc
   iterative_region_merger.cc
   cortex_column_region_quality.cc
+  laplace_solver.cc
+  upwinding.cc
+  volume_util.cc
 )
 
 BRAINVISA_COPY_AND_INSTALL_HEADERS(_headers ${PROJECT_NAME} headersTarget)
 
 include_directories(${GSL_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
+
 add_library(${PROJECT_NAME} SHARED ${_sources})
 add_dependencies(${PROJECT_NAME} ${headersTarget})
+
+if(OPENMP_FOUND)
+  set_source_files_properties(${_sources} PROPERTIES
+    COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+  # This is needed for GCC, untested with any other compiler.
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+    LINK_FLAGS ${OpenMP_CXX_FLAGS})
+endif()
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${${PROJECT_NAME}_VERSION})
 target_link_libraries(${PROJECT_NAME} ${AIMS-FREE_LIBRARIES} ${GSL_LIBRARIES})
 BRAINVISA_INSTALL(TARGETS ${PROJECT_NAME}
@@ -51,5 +73,7 @@ if(DOXYGEN_FOUND)
 
   BRAINVISA_GENERATE_DOXYGEN_DOC(_headers
                                  INPUT_PREFIX "${CMAKE_BINARY_DIR}/include/${PROJECT_NAME}")
+
+  #TODO fix warning for out-of-tree build
   add_dependencies(${PROJECT_NAME}-doxygen aimsdata-doxygen graph-doxygen cartobase-doxygen cartodata-doxygen pyaims-doxygen)
 endif(DOXYGEN_FOUND)

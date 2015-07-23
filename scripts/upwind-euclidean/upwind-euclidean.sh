@@ -1,6 +1,6 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
+#! /bin/sh -e
 #
+# Copyright Télécom ParisTech (2015).
 # Copyright CEA (2014).
 # Copyright Université Paris XI (2014).
 #
@@ -36,20 +36,26 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL licence and that you accept its terms.
 
-from soma import aims
-from soma import aimsalgo
+ylUpwindDistance --verbose \
+    --domain ../classif.nii.gz \
+    --domain-label 100 \
+    --origin-label 0 \
+    --field ../heat/heat.nii.gz \
+    --output pial-length.nii.gz
 
-import sys
-n_iter = int(sys.argv[1])
-time_step = float(sys.argv[2])
+ylUpwindDistance --verbose \
+    --domain ../classif.nii.gz \
+    --domain-label 100 \
+    --origin-label 200 \
+    --invert \
+    --field ../heat/heat.nii.gz \
+    --output white-length.nii.gz
 
-heatmap_before = aims.read("./heat.nii.gz", 1)
-
-mask = aims.read("./all_but_cortex.nii", 1)
-aimsmask = aims.AimsData(mask)  # Important for reference-counting!
-
-diff = aimsalgo.MaskedDiffusionSmoother_FLOAT(time_step)
-diff.setMask(aimsmask, 32767)
-heatmap = diff.doSmoothing(heatmap_before, n_iter, True)
-
-aims.write(heatmap, "./heat.nii.gz")
+cartoLinearComb.py -f 'I1+I2' \
+    -i pial-length.nii.gz \
+    -i white-length.nii.gz \
+    -o total-length.nii.gz
+cartoLinearComb.py -f 'I1/I2' \
+    -i pial-length.nii.gz \
+    -i total-length.nii.gz \
+    -o pial-fraction.nii.gz
