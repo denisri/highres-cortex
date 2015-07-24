@@ -55,6 +55,8 @@
 # how to run this file
 #/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r
 
+# when working on a laptop
+#/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r -l
 
 
 from soma import aims, aimsalgo
@@ -86,6 +88,7 @@ toT2 = False           # transform volumes to T2 space or not. Recently decided 
 workOnLaptop = False
 workOnT1inT2Space = False
 numberOfIt = 3   # number of iterations to extend (dilate) the selected regions
+heatCaluclation = None
 
 parser = OptionParser('Calculate iso-volumes and cortical columns')
 parser.add_option('-p', dest='realPatientID', help='Patient ID')   # if nothing is given: exit
@@ -100,6 +103,8 @@ parser.add_option('-e', dest='eliminateSulci', action = 'store_true', help='Elim
 parser.add_option('-k', dest='keyWord', help='KeyWord for the result files (the patient ID and the hemisphere are set by default)') 
 parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
 parser.add_option('-r', dest='workOnT1inT2Space', action = 'store_true', help='Select if working on with T1 images that were resampled into T2 space and then processed by Morphologist. False is default') 
+parser.add_option('-g', dest='heatCaluclation', help='Version of the heat calculation program: old or new') 
+
 
 
 ##################### for tests ############
@@ -182,8 +187,24 @@ if options.cutOut is not None:
     
 #if options.toT2 is not None:
     #toT2 = options.toT2    
-        
+
+heatMainScript = ''        
+if options.heatCaluclation is None:
+    print >> sys.stderr, 'New: exit. No version for the heat calculation was given'
+    sys.exit(1)
+else:
+    heatCaluclation = options.heatCaluclation
     
+if heatCaluclation == 'old':
+    print 'selected the old version for the heat calculation'
+    heatMainScript = 'od_heatMain.py'
+elif heatCaluclation == 'new':
+    print 'selected the new version for the heat calculation'
+    heatMainScript = '/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_heatMain_NEW.py'
+else:
+    print 'selected the wrong keyword for the version for the heat calculation. Exit'
+    sys.exit(1)
+   
 # in the given directory create the subdirectory for the results
 if not os.path.exists(data_directory):
     os.makedirs(data_directory)
@@ -191,7 +212,10 @@ if not os.path.exists(data_directory):
 pathToClassifFileOriginal = pathToClassifFile
     
 
-
+if realSide == 'L':
+    hemisphere = 'left'
+else:
+    hemisphere = 'right'
 
 ############# todo before this processing : ###############
 ###################### check: work in space T1 or T2 #######################################################################
@@ -206,7 +230,8 @@ pathToClassifFileOriginal = pathToClassifFile
 # 3. transform it and resample into T2 space
 # 4. apply Yann's scripts
     
-    
+
+statFileName = data_directory + "statFile_%s" %(keyWord)
 ############################# 1. either cut out the regions of interest or not, update the keyWord ##############################
 print 'cutOut is ', str(cutOut), 'type(cutOut) is ', type(cutOut)
 if cutOut is True:
@@ -214,26 +239,29 @@ if cutOut is True:
     keyWord += '_cut'
     print 'updated keyWord is : ', keyWord
     # take the seeds from the texture and perform the Voronoi classification of the voxels
-    print pathToClassifFile
-    volGWBorder = aims.read(pathToClassifFile, 1)
-    # find the path to the texture file
-    if realSide == 'L':
-        hemisphere = 'left'
+    print 'pathToClassifFile: ', pathToClassifFile
+    
+    # note if the processing was performed on laptop:
+    if workOnLaptop:
+        statFileName += '_laptop.txt'
     else:
-        hemisphere = 'right'
+        statFileName += '.txt'
+
+    # check if this file exists:
+    classFiles = glob.glob(pathToClassifFile)
+    if len(classFiles) != 1:
+        print 'abort the calculation, as too many or not a single classif files was found'
+        f = open(statFileName, "w")
+        f.write('abort the calculation, as ' + str(len(classFiles)) + ' classFiles files were found' + '\n')
+        f.close()
+        sys.exit(0)
         
+    volGWBorder = aims.read(pathToClassifFile, 1)
+    # find the path to the texture file        
     filesTex = glob.glob(pathToTextures + '%s/%s/' %(realPatientID, hemisphere) + 'subject[0-9]*_side[0-1]_texture.gii')
     if len(filesTex) != 1:
         # abort the calculation, as too many or not a single texture file was found
         print 'abort the calculation, as too many or not a single texture file was found'
-        statFileName = data_directory + "statFile_%s" %(keyWord)
-
-        # note if the processing was performed on laptop:
-        if workOnLaptop:
-            statFileName += '_laptop.txt'
-        else:
-            statFileName += '.txt'
-
         f = open(statFileName, "w")
         f.write('abort the calculation, as ' + str(len(filesTex)) + ' texture files were found' + '\n')
         f.close()
@@ -278,6 +306,16 @@ print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eli
 if eliminateSulci is True:
     print '###################################### eliminate sulci skeletons #################################################'
     pathToSulciFile = brainvisa_db_neurospin + realPatientID + '/t1mri/t1m_resamp/default_analysis/folds/3.1/default_session_auto/segmentation/%sSulci_%s_default_session_auto.nii.gz' %(realSide, realPatientID)
+    
+    # test whether this sulci file is available
+    filesSulci = glob.glob(pathToSulciFile)
+    if len(filesSulci) != 1:
+        print 'problem! found ', len(filesSulci), ' sulci skeleton files! Exit'
+        f = open(statFileName, "w")
+        f.write('abort the calculation, as ' + str(len(filesSulci)) + ' sulci skeleton files were found' + '\n')
+        f.close()
+        sys.exit(0)
+    
     print 'found the sulci skeletons file : ', pathToSulciFile
     volSulci = aims.read(pathToSulciFile)
     arrSulci = np.array(volSulci, copy = False)
@@ -290,9 +328,7 @@ if eliminateSulci is True:
         arrVor[arrSulci != 0] = 0
         keyWord += '_noSulci'
         print 'updated keyWord is : ', keyWord
-
         aims.write(volVor, data_directory +  'voronoi_%s.nii.gz' %(keyWord))        
-
         print '######################## correct voxel classification after sulci eliminated from Voronoi  #####################'
         volVor = aims.read(data_directory +  'voronoi_%s.nii.gz' %(keyWord))
         volVorCorr = highres_cortex.od_cutOutRois.correctVoxelLabels(volVor, data_directory +  'voronoi_%s.nii.gz' %(keyWord), data_directory, keyWord, 8, 6)        
@@ -520,16 +556,24 @@ t1dist = timeit.default_timer()
 t0heat = timeit.default_timer()
 
 # launch this process for images in initial T1 space:
+# TODO! test the new Yann's script!!!
 if options.workOnT1inT2Space is not None:    
     print 'start heat calculation for images in T2 space resampled from T1'
-    commands = commands + 'od_heatMain.py \n' + 'time ' + 'od_heatMain.py '+ '-i '+ pathToClassifFile+ ' -r '+ '-d '+ data_directory+ ' -k '+ keyWord + '\n'
-    subprocess.check_call(['time', 'od_heatMain.py', '-i', pathToClassifFile, '-r', '-d', data_directory, '-k', keyWord])
+    commands = commands + heatMainScript + ' \n' + 'time ' + heatMainScript + ' -i '+ pathToClassifFile+ ' -r '+ '-d '+ data_directory+ ' -k '+ keyWord + '\n'
+    subprocess.check_call(['time', heatMainScript, '-i', pathToClassifFile, '-r', '-d', data_directory, '-k', keyWord])
 else:
     print 'start heat calculation for images in initial T1 space'
-    commands = commands + 'od_heatMain.py \n' + 'time '+ 'od_heatMain.py '+ '-i '+ pathToClassifFile+ ' -d '+ data_directory+ ' -k '+ keyWord + '\n'
-    subprocess.check_call(['time', 'od_heatMain.py', '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
+    commands = commands + heatMainScript + ' \n' + 'time '+ heatMainScript + ' -i '+ pathToClassifFile+ ' -d '+ data_directory+ ' -k '+ keyWord + '\n'
+    subprocess.check_call(['time', heatMainScript, '-i', pathToClassifFile, '-d', data_directory, '-k', keyWord])
 
 t1heat = timeit.default_timer()
+
+# TODO! delete after test!
+#sys.exit(0)
+
+# example of how to run only the heat step with the new version:
+#time /volatile/od243208/brainvisa_sources/highres-cortex/bin/od_heatMain_NEW.py -i /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/GWsegm_fg140290_L_cut_noSulci_extended.nii.gz -r -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/ -k fg140290_L_cut_noSulci_extended
+
 
 ## launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
 t0iso = timeit.default_timer()
