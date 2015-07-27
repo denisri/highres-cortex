@@ -104,7 +104,7 @@ hemispheres = ['L', 'R']
 # todo: for cb... - need process the right side!!!
 
 # file to monitor comparison of the old and of the new heat calculation method
-#heatCompareFile = open('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/heatCompareFile.txt', 'w')
+heatCompareFile = open('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/heatCompareFile.txt', 'w')
 
 for p in listOfSubjects:
     print 'start with subject ', p
@@ -120,14 +120,18 @@ for p in listOfSubjects:
         #subprocess.check_call(['od_mainCorticalColumns.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/%s_T1inT2_ColumnsCutNew20It/' %(p, p), '-e', '-r', '-c'])
 
 
-        print 'run the main cortical columns script for CUT volumes for NEW DB using old heat equation!!!'
-        subprocess.check_call(['/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/%s/%s_T1inT2_ColumnsCutNew20It_NewDB/' %(p, p), '-e', '-r', '-c', '-g', 'old'])
+        #print 'run the main cortical columns script for CUT volumes for NEW DB using old heat equation!!!'
+        #subprocess.check_call(['/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/%s/%s_T1inT2_ColumnsCutNew20It_NewDB/' %(p, p), '-e', '-r', '-c', '-g', 'old'])
 
-        ############################################################################################################################################################
-        # TODO! delete it after the validation of the new heat calculation method!
+
+        #print 'run the main cortical columns script for CUT volumes for NEW DB using NEW heat equation!!!'
+        #subprocess.check_call(['/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/%s/%s_T1inT2_ColumnsCutNew20It_NewDB/' %(p, p), '-e', '-r', '-c', '-g', 'new'])
+
+        #############################################################################################################################################################
+        ## TODO! delete it after the validation of the new heat calculation method!
         #volsHeatOld = glob.glob('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/%s/%s_T1inT2_ColumnsCutNew20It_NewDB/heat/heat_%s_%s_cut_noSulci_extended.nii.gz' %(p, p, p, s))
         #volsHeatNew = glob.glob('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/%s/%s_T1inT2_ColumnsCutNew20It_NewDB_NewHeat/heat/heat_%s_%s_cut_noSulci_extended.nii.gz' %(p, p, p, s))
-        #if ((len(volsHeatOld) == 1) && (len(volsHeatNew) == 1)):
+        #if ((len(volsHeatOld) == 1) & (len(volsHeatNew) == 1)):
             #volHeatOld = aims.read(volsHeatOld[0])        
             #volHeatNew = aims.read(volsHeatNew[0])     
             #arrHeatOld = np.array(volHeatOld, copy = False)
@@ -135,12 +139,9 @@ for p in listOfSubjects:
             #diffM = np.max(np.abs(arrHeatOld - arrHeatNew * 200))
             #print diffM
             #heatCompareFile.write('Subject %s, side %s, maxDiff between heat methods %s \n' %(p, s, str("%.4f" % diffM)))
-        ############################################################################################################################################################
-
-
-
-
-
+        #else:
+            #print 'len(volsHeatOld) = ', len(volsHeatOld), ' , len(volsHeatNew) = ', len(volsHeatNew)
+        #############################################################################################################################################################
 
         
         ## 2. run the main cortical columns script for FULL volumes, 
@@ -153,14 +154,7 @@ for p in listOfSubjects:
         ## 3. test whether the selected region growing was enough
         #print 'test whether the selected region growing was enough'
         #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_testExtendVoronoiParams.py', '-p', p, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/', '-s', s])
-        
-        
-        ######################################### 12.05.2015: Yann & Denis: check the flatness of the column region ####################################
-        # for each column: take the image "div_gradn" and calculate 
-        
-        
-        
-        
+                
         
         # 4. extract profiles and plot them
         #print 'extract profiles and plot them'
@@ -172,11 +166,13 @@ for p in listOfSubjects:
         #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p)])
         
         #diams = [1, 3, 5, 7, 9]
-        #diams = [3]
-        #for diam in diams:
-            ### with cortical columns
-            #subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s/' % (p), '-c', str(diam)])
-        #print ''
+        diams = [3]
+        for diam in diams:      ## with cortical columns
+            print 'extract profiles, diam %s', str(diam)
+            subprocess.check_call(['python', '/volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py', '-p', p, '-s', s, '-d', '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/%s/' % (p), '-c', str(diam), '-j', 'old'])
+        print ''
+        
+              
         
     ## 5. plot LvsR data for the listOfSubjects
     ## TODO: modify it and add a real diameter!!!

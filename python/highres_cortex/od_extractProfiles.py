@@ -191,7 +191,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         #axCSF = fig.add_subplot(1,3,3)
         #axCSF.hist(arrValue1CSF, bins = 50)
         #axCSF.title('Histogram of T2 intensities in CSF')   # subplot 211 title
-        ##plt.savefig(directory + '%s_%s_histOfColumnSizes%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
+        ##plt.savefig(pathToColumnResults + '%s_%s_histOfColumnSizes%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
         #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ac140159/.png' %(realPatientID, realSide, addedColumnsDiamName))    
         #plt.clf()
         #plt.close()
@@ -557,8 +557,10 @@ if __name__ == '__main__':
     columnDiameter = None
     workOnLaptop = False
     reExtractProfilesCutBorders = False
-    pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
-    pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
+    #pathToNobiasT2 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S4/'
+    #pathToNobiasT2_new = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/T2_nobias_FR5S16/'
+    pathToNobiasT2_newCroppedDB = '/neurospin/lnao/dysbrain/brainvisa_db_T2_cropped/dysbrain/'   
+    pathToNew_T1inT2DB = '/neurospin/lnao/dysbrain/brainvisa_db_T1_in_T2_space/dysbrain/'
     minColumnSize = 10 # depends on the diameter
     heights = []
     minColumnSizes = []
@@ -570,7 +572,7 @@ if __name__ == '__main__':
     divGradnThresholds = [-0.2, 0.35]
     #divGradnThresholds = [-0.25, 0.35]
     #divGradnThresholds = [-0.5, 0.5] #just for test
-
+    heatCaluclation = None      # version of the heat volume (and so the corresponding columns) to use
 
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
@@ -580,6 +582,8 @@ if __name__ == '__main__':
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
     parser.add_option('-g', dest='ignoreCommunColums', action = 'store_false', help='Select if want to INCLUDE into calculation cortical colums found in several ROIs (Excluding them is default')
     parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
+    parser.add_option('-j', dest='heatCaluclation', help='Version of the heat calculation program: old or new') 
+
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -605,6 +609,12 @@ if __name__ == '__main__':
     if options.ignoreCommunColums is not None:
         ignoreCommunColums = options.ignoreCommunColums
 
+    if options.heatCaluclation is None:
+        print >> sys.stderr, 'New: exit. No version for the heat calculation was given'
+        sys.exit(1)
+    else:
+        heatCaluclation = options.heatCaluclation
+
     if options.workOnLaptop is not None:
 	    workOnLaptop = options.workOnLaptop      
 	    # if true, then processes are run on the laptop. Change locations of neurospin DBs
@@ -612,54 +622,58 @@ if __name__ == '__main__':
 	    #pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')  
 	    
 	    # saving the data locally on the laptop
-	    pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
-	    pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')  	    
-        
-    pathToCoord = directory + '%s_T1inT2_ColumnsCutNew20It/isovolume/' %(realPatientID)
-    pathToMask = directory + '%s_T1inT2_ColumnsCutNew20It/' %(realPatientID)
+	    #pathToNobiasT2 = pathToNobiasT2.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+	    #pathToNobiasT2_new = pathToNobiasT2_new.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')  	
+	    pathToNobiasT2_newCroppedDB = pathToNobiasT2_newCroppedDB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+            pathToNew_T1inT2DB = pathToNew_T1inT2DB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+            
+    pathToColumnResults = ''
+    # set it depending on the version of the heat equation that has to be used
+    if heatCaluclation == 'old':
+        print 'selected the old version for the heat calculation'
+        pathToColumnResults = directory + '%s_T1inT2_ColumnsCutNew20It_NewDB/' %(realPatientID)        
+    elif heatCaluclation == 'new':
+        print 'selected the new version for the heat calculation'
+        pathToColumnResults = directory + '%s_T1inT2_ColumnsCutNew20It_NewDB_NewHeat/' %(realPatientID)        
+    else:
+        print 'selected the wrong keyword for the version for the heat calculation. Exit'
+        sys.exit(0)    
+    
+    pathToCoord = pathToColumnResults + 'isovolume/'
     volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
-    volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
-    volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
-    volsMask = glob.glob(pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
+    #volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
+    #volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
+    volValue2 = aims.read(pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))
+    volsMask = glob.glob(pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
     print 'volsCoord = ' , pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
-    print 'volsMask = ', pathToMask + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide)
-    print 'volValue2 = ', pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID)     
-    volClassifNoBorders = directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+    print 'volsMask = ', pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide)
+    print 'volValue2 = ', pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID)     
+    volClassifNoBorders = pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
+    fT2intensInfo = open(pathToColumnResults + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
 
     # test if all data is available
     if len(volsCoord) != 1 or len(volsMask) != 1:
         # abort the calculation, as too many or not a single texture file was found
         print 'abort the calculation, as too many or not a single volsCoord and volsMask file was found'
-        ss = directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide)        
-        print 'f = ', ss
-
-        f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
-        f.write('abort the calculation, as ' + str(len(volsCoord)) + ' volsCoord and ' + str(len(volsMask)) + ' volsMask files were found' + '\n')
-        f.close()
+        fT2intensInfo.write('abort the calculation, as ' + str(len(volsCoord)) + ' volsCoord and ' + str(len(volsMask)) + ' volsMask files were found' + '\n')
+        fT2intensInfo.close()
         sys.exit(0)    
-        f.close()        
         
     volCoord = aims.read(volsCoord[0])  
     volMask = aims.read(volsMask[0])
     
     
     
-    fT2intensInfo = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
     ################ TODO ! ########  repeat this analysis for the new subjects!!!!!!!!!!!!!!!! #######################################################
     ## test how many zeros in the data 
     #testVoronoiOutsideT2(volMask, volValue2, 4, fT2intensInfo)    
     #sys.exit(0)
-    ###################################################################################################################################################
-    
-    
-    
-    
-    
+    ###################################################################################################################################################    
     
     # study T2 intensities for data cleaning  
     maskGW = np.asarray(aims.read(volClassifNoBorders))
     print 'maskGW = ' , volClassifNoBorders
-    volFullGW = '/neurospin/lnao/dysbrain/brainvisa_db_highresLinearCropped10/dysbrain/%s/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realPatientID, realSide, realPatientID)
+    volFullGW = pathToNew_T1inT2DB + '%s/t1mri/t1m_resamp/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realPatientID, realSide, realPatientID)    
     print 'volFullGW = ', volFullGW
     maskGWFull = np.asarray(aims.read(volFullGW))# also compare to all data available in T2, not only ROIs
     arrValue = np.asarray(volValue2)
@@ -692,8 +706,8 @@ if __name__ == '__main__':
     axCSFNoZeros = fig.add_subplot(2,3,6)
     axCSFNoZeros.hist(arrValue1CSFNoZeros, bins = 50)
     axCSFNoZeros.set_title('Histogram of T2 intensities in CSF NoZeros')   # subplot 211 title    
-    #plt.savefig(directory + '%s_%s_histOfT2intensitiesInROIs.png' %(realPatientID, realSide))    
-    plt.savefig(directory + '%s_%s_histOfT2intensInROIs.png' %(realPatientID, realSide))    
+    #plt.savefig(pathToColumnResults + '%s_%s_histOfT2intensitiesInROIs.png' %(realPatientID, realSide))    
+    plt.savefig(pathToColumnResults + '%s_%s_histOfT2intensInROIs.png' %(realPatientID, realSide))    
     plt.clf()
     plt.close()
  
@@ -712,7 +726,7 @@ if __name__ == '__main__':
     axCSF = fig.add_subplot(1,3,3)
     axCSF.hist(arrValue1CSFFull, bins = 50)
     axCSF.set_title('Histogram of T2 intensities in CSF')   # subplot 211 title
-    plt.savefig(directory + '%s_%s_histOfT2intensitiesAllData.png' %(realPatientID, realSide))    
+    plt.savefig(pathToColumnResults + '%s_%s_histOfT2intensitiesAllData.png' %(realPatientID, realSide))    
     plt.clf()
     plt.close()
     
@@ -806,7 +820,7 @@ if __name__ == '__main__':
         columnDiameter = int(options.columnDiameter)
         print '******************* columns diameter was given = ', str(columnDiameter) , ' extract profiles in the columns ***************************'
         # human cortical thickness 2 - 4mm
-        vs = volValue.header()['voxel_size'][0:3]
+        vs = volValue2.header()['voxel_size'][0:3]
         voxelSizeMax = np.max(vs)
         voxelSizeMin = np.min(vs)
         voxelSizeAvg = np.average(vs)
@@ -834,25 +848,23 @@ if __name__ == '__main__':
         # read in the columns file
         volName = ''
         if columnDiameter == 1:
-            volName = directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/' %(realPatientID) + 'merged_randomized_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
+            volName = pathToColumnResults + 'column_regions/merged_randomized_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
         else:
-            volName = directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/' %(realPatientID) + 'merged_randomized_%s_%s_cut_noSulci_extended_diam%s.nii.gz' %(realPatientID, realSide, str(columnDiameter))
+            volName = pathToColumnResults + 'column_regions/merged_randomized_%s_%s_cut_noSulci_extended_diam%s.nii.gz' %(realPatientID, realSide, str(columnDiameter))
             
         volsColumns = glob.glob(volName)
 
         if len(volsColumns) != 1:# abort the calculation, as too many or not a single columns file was found
             print 'abort the calculation, as too many or not a single volsColumns file was found'
-            f = open(directory + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
-            f.write('abort the calculation, as ' + str(len(volsColumns)) + ' volsColumns files were found' + '\n')
-            f.close()
+            fT2intensInfo.write('abort the calculation, as ' + str(len(volsColumns)) + ' volsColumns files were found' + '\n')
+            fT2intensInfo.close()
             sys.exit(0)
-            f.close()
             
         volColumns = aims.read(volsColumns[0])  
         print 'volColumns = ', volsColumns[0]        
         # read in the div_gradn file (for measuring the flatness of the resoective column region)
-        volDivGradn = aims.read(directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide))          
-        print 'volDivGradn = ', directory + '%s_T1inT2_ColumnsCutNew20It/heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+        volDivGradn = aims.read(pathToColumnResults + 'heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))          
+        print 'volDivGradn = ', pathToColumnResults + 'heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
         #result = extractProfilesInColumns(volCoord, volValue, volColumns, volMask)
         # repeat for the NEW nobias images!
         
@@ -861,9 +873,9 @@ if __name__ == '__main__':
         print 'cut borders from the volume ', volsColumns[0]
         print 'using the original file ', volClassifNoBorders
         # cut the borders
-        subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '0', '-v', '0', '-i', volsColumns[0], '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
+        subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '0', '-v', '0', '-i', volsColumns[0], '-M', volClassifNoBorders, '-o', pathToColumnResults + 'column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)])
         
-        subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide), '-M', volClassifNoBorders, '-o', directory + '%s_T1inT2_ColumnsCutNew20It/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)])
+        subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', pathToColumnResults + 'column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide), '-M', volClassifNoBorders, '-o', pathToColumnResults + 'column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)])
               
         # TODO : delete it!      
         #sys.exit()
@@ -886,7 +898,7 @@ if __name__ == '__main__':
     #plt.title('Profile in ROI')   # subplot 211 title
     #plt.xlabel('Cortical depth')
     #plt.ylabel('T2-nobias intensity')
-    #plt.savefig(directory + '%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
+    #plt.savefig(pathToColumnResults + '%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
 
     coordinates2 = result2[0]
     intensities2 = result2[1]
@@ -896,7 +908,7 @@ if __name__ == '__main__':
     #plt.title('Profile in ROI')   # subplot 211 title
     #plt.xlabel('Cortical depth')
     #plt.ylabel('T2-nobias intensity')
-    #plt.savefig(directory + '%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))    
+    #plt.savefig(pathToColumnResults + '%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))    
     #plt.clf()
     #plt.close()
     
@@ -904,13 +916,13 @@ if __name__ == '__main__':
     plt.title('Profile in all ROIs')   # subplot 211 title
     plt.xlabel('Cortical depth')
     plt.ylabel('T2-nobias intensity')
-    plt.savefig(directory + '%s_%s_newNobiasT2ROIs.png' %(realPatientID, realSide))    
+    plt.savefig(pathToColumnResults + '%s_%s_newNobiasT2ROIs.png' %(realPatientID, realSide))    
     plt.clf()
     plt.close()
   
     # save the data for further processing. 
-    #data1 = open(directory + '%s_%s_profiles.txt' %(realPatientID, realSide), "w")
-    data2 = open(directory + '%s_%s_profiles2.txt' %(realPatientID, realSide), "w")
+    #data1 = open(pathToColumnResults + '%s_%s_profiles.txt' %(realPatientID, realSide), "w")
+    data2 = open(pathToColumnResults + '%s_%s_profiles2.txt' %(realPatientID, realSide), "w")
     headerLine = '\t' + 'DepthCoord' + '\t' + 'Value'
     #data1.write(headerLine + '\n')
     data2.write(headerLine + '\n')
@@ -933,7 +945,7 @@ if __name__ == '__main__':
     fT2intensInfo.close()
     #sys.exit(0)
     addedColumnsDiamName = ''
-    pathForFiles = directory
+    pathForFiles = pathToColumnResults
     print '############################################ columnDiameter = ', str(columnDiameter)
     if columnDiameter is not None:
         addedColumnsDiamName = '_diam%s' %(columnDiameter)
@@ -966,7 +978,7 @@ if __name__ == '__main__':
     dataS.write(headerInfo)    
     sizeSorted = pathForFiles + 'sortedBySize/'
     divGradnSorted = pathForFiles + 'sortedByDivGradn/'
-    divGradnClasses = directory + 'divGradnClasses/'
+    divGradnClasses = pathToColumnResults + 'divGradnClasses/'
     corticalLayers = pathForFiles + 'corticalLayers/'
 
     if not os.path.exists(sizeSorted):
@@ -1061,7 +1073,7 @@ if __name__ == '__main__':
         plt.title('Histogram of columns sizes for diameter %s ' %(columnDiameter))   # subplot 211 title
         plt.xlabel('Cortical columns sizes')
         plt.ylabel('Percentage')
-        plt.savefig(directory + '%s_%s_histOfColumnSizes%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
+        plt.savefig(pathToColumnResults + '%s_%s_histOfColumnSizes%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
         plt.clf()
         plt.close()
         
@@ -1071,7 +1083,7 @@ if __name__ == '__main__':
         plt.title('Histogram of theoretical heights of columns for diameter %s ' %(columnDiameter))   # subplot 211 title
         plt.xlabel('Theoretical heights of columns')
         plt.ylabel('Percentage')
-        plt.savefig(directory + '%s_%s_histOfTheorHeights%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
+        plt.savefig(pathToColumnResults + '%s_%s_histOfTheorHeights%s.png' %(realPatientID, realSide, addedColumnsDiamName))    
         plt.clf()
         plt.close()
         
@@ -1103,7 +1115,7 @@ if __name__ == '__main__':
                 plt.title('Profile in cortical columns larger %s' %(minColumnSizes[j]))   # subplot 211 title
                 plt.xlabel('Cortical depth')
                 plt.ylabel('T2-nobias intensity')
-                plt.savefig(directory + '%s_%s_newNobiasT2%s_over%s.png' %(realPatientID, realSide, addedColumnsDiamName, minColumnSizes[j]))    
+                plt.savefig(pathToColumnResults + '%s_%s_newNobiasT2%s_over%s.png' %(realPatientID, realSide, addedColumnsDiamName, minColumnSizes[j]))    
                 plt.clf()
                 plt.close()
             
@@ -1259,7 +1271,7 @@ if __name__ == '__main__':
                 nameInclExcl = 'inclCommun'
             # do not save the picture if it is empty
             if numP != 0:
-                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl), bbox_inches='tight')            
+                plt.savefig(pathToColumnResults + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl), bbox_inches='tight')            
             plt.clf()
             plt.close()            
         
@@ -1400,7 +1412,7 @@ if __name__ == '__main__':
                 nameInclExcl = 'inclCommun'
             # do not save the picture if it is empty
             if numP != 0:
-                plt.savefig(directory + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s_avgDivGradn_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl, strT), bbox_inches='tight')            
+                plt.savefig(pathToColumnResults + '%s_%s_nobiasT2_ROIs%s' %(realPatientID, realSide, roiNames) + '%s_over%s_%s_avgDivGradn_%s.png' %(addedColumnsDiamName, minColumnSizes[t], nameInclExcl, strT), bbox_inches='tight')            
             plt.clf()
             plt.close()    
         
