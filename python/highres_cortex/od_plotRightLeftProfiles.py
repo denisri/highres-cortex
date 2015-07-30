@@ -61,12 +61,14 @@ if __name__ == '__main__':
     directory = None
     #realSide = 'L'
     columnDiameter = None
+    heatCaluclation = None      # version of the heat volume (and so the corresponding columns) to use
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
     parser.add_option('-c', dest='columnDiameter', help='columnDiameter to work with')
     #parser.add_option('-s', dest='realSide', help='Hemisphere to be processed: L or R. L is default')   
     parser.add_option('-d', dest='directory', help='directory')
+    parser.add_option('-j', dest='heatCaluclation', help='Version of the heat calculation program: old or new') 
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -84,10 +86,28 @@ if __name__ == '__main__':
         realPatientID = options.realPatientID     
         
     if options.columnDiameter is not None:
-        columnDiameter = int(options.columnDiameter)
+        columnDiameter = int(options.columnDiameter)    
+        
+    if options.heatCaluclation is None:
+        print >> sys.stderr, 'New: exit. No version for the heat calculation was given'
+        sys.exit(1)
+    else:
+        heatCaluclation = options.heatCaluclation
 
-    pathToProfL = directory + '%s_L_profiles2.txt' %(realPatientID)
-    pathToProfR = directory + '%s_R_profiles2.txt' %(realPatientID)
+    pathToColumnResults = ''
+    # set it depending on the version of the heat equation that has to be used
+    if heatCaluclation == 'old':
+        print 'selected the old version for the heat calculation'
+        pathToColumnResults = directory + '%s_T1inT2_ColumnsCutNew20It_NewDB/' %(realPatientID)        
+    elif heatCaluclation == 'new':
+        print 'selected the new version for the heat calculation'
+        pathToColumnResults = directory + '%s_T1inT2_ColumnsCutNew20It_NewDB_NewHeat/' %(realPatientID)        
+    else:
+        print 'selected the wrong keyword for the version for the heat calculation. Exit'
+        sys.exit(0)    
+
+    pathToProfL = pathToColumnResults + '%s_L_profiles2.txt' %(realPatientID)
+    pathToProfR = pathToColumnResults + '%s_R_profiles2.txt' %(realPatientID)
     
     # check if both these profiles exist
     profL = glob.glob(pathToProfL)
@@ -95,16 +115,14 @@ if __name__ == '__main__':
     
     if len(profL) != 1 or len(profR) != 1:
         # abort the calculation, as too many or not a single texture file was found
-        f = open(directory + '%s_compareProfilesStat.txt' %(realPatientID), "w")
+        f = open(pathToColumnResults + '%s_compareProfilesStat.txt' %(realPatientID), "w")
         print 'abort the calculation, as too many or not a single profL or R file was found'
         f.write('abort the calculation, as ' + str(len(profL)) + ' profL and ' + str(len(profR)) + ' profR profile files were found' + '\n')
         f.close()
-        sys.exit(0) 
-    
+        sys.exit(0)     
     
     numbL, coordL, valueL = np.loadtxt(pathToProfL, skiprows = 1, unpack = True)
-    numbR, coordR, valueR = np.loadtxt(pathToProfR, skiprows = 1, unpack = True)
-       
+    numbR, coordR, valueR = np.loadtxt(pathToProfR, skiprows = 1, unpack = True)       
     # plot the data
     plt.plot(coordL, valueL, '.', c = 'b', label = 'L')
     plt.title('Profile in all ROIs')   # subplot 211 title
@@ -112,20 +130,17 @@ if __name__ == '__main__':
     plt.ylabel('T2-nobias intensity')
     plt.plot(coordR, valueR, '.', c = 'r', label = 'R')
     plt.legend(loc='upper right', numpoints = 1)
-    plt.savefig(directory + '%s_LvsR_2nobiasT2.png' %(realPatientID))    
-    
-    # TODO: delete later if no need: save profiles also to the outer folder!
-    #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2.png' %(realPatientID))    
+    plt.savefig(pathToColumnResults + '%s_LvsR_2nobiasT2.png' %(realPatientID))       
     plt.clf()
     plt.close()
     
     # now plot L vs R in various ROIs
     # af140169_R_profiles2_ROI_21.txt, af140169_R_profiles2_ROI_11.txt and the same with L
-    pathToROIsProfL = directory + '%s_L_profiles2_ROI_[0-9]*.txt' %(realPatientID)
+    pathToROIsProfL = pathToColumnResults + '%s_L_profiles2_ROI_[0-9]*.txt' %(realPatientID)
     #print 'pathToROIsProfL'
     #print pathToROIsProfL
 
-    pathToROIsProfR = directory + '%s_R_profiles2_ROI_[0-9]*.txt' %(realPatientID)
+    pathToROIsProfR = pathToColumnResults + '%s_R_profiles2_ROI_[0-9]*.txt' %(realPatientID)
     
     # check if both these profiles exist. and how many are there
     profROIsL = glob.glob(pathToROIsProfL)
@@ -157,7 +172,7 @@ if __name__ == '__main__':
             plt.ylabel('T2-nobias intensity')
             plt.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
             plt.legend(loc='upper right', numpoints = 1)
-            plt.savefig(directory + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))   
+            plt.savefig(pathToColumnResults + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))   
             
             # TODO: delete later if no need: save profiles also to the outer folder!
             #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))    

@@ -72,11 +72,10 @@ def extractProfiles(volCoord, volValue, volMask = None):
     If no mask was given, profiles are extracted in the whole volume.
     Forfiles are extracted as a list of values and a list of coordinates.    
     """
-    #print volCoord.header()
     
     arrCoord = np.asarray(volCoord)
     arrValue = np.asarray(volValue)
-
+    
     # apply the mask if it was given
     listOfSeparateCoords = []
     listOfSeparateValues = []
@@ -85,24 +84,87 @@ def extractProfiles(volCoord, volValue, volMask = None):
         mask = np.asarray(volMask)        
         # get these ROIs
         arrCoord1 = arrCoord[mask != 0]
-        arrValue1 = arrValue[mask != 0]
+        arrValue1 = arrValue[mask != 0]        
+            
+        # scale the volume of values
+        # TODO! before all this: ensure to work on zero-free data!!!!!!!!!!!!!!!
+        # important! need to transform them to float before!!!
+        strMeansInfo = 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
+        print 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
+        arrValue1 = arrValue1.astype('float')
+        arrValue = arrValue.astype('float')
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
+        print '-----------------------------------------', strMeansInfo        
+            
+        # TODO! before scaling: eliminate 'outliers'
+        # consider values lower than 1st percentile and greater than 99th percentile: outliers!
+        # exclude them and perform scaling without them
+        percentile1 = np.percentile(arrValue1, 1)
+        percentile99 = np.percentile(arrValue1, 99)
+        print 'computed percentile1 = ', percentile1, ' percentile99 = ', percentile99
+        arrValue1OutliersSmall = arrValue1[arrValue1 <= percentile1]
+        arrValue1OutliersBig = arrValue1[arrValue1 >= percentile99]
+        arrValue1NoOutliers = arrValue1[(arrValue1 > percentile1) & (arrValue1 < percentile99)]
+        print 'num of Voxelx changed from ', len(arrValue1), ' to ', len(arrValue1NoOutliers), ' eliminated ', len(arrValue1OutliersSmall), ' and ', len(arrValue1OutliersBig)
+        
+        # scale the T2 data without outliers
+        arrValue1NoOutliersScaled = preprocessing.scale(arrValue1NoOutliers)
+        
+        # for comparison also scale the data WITH outliers
+        arrValue1Scaled = preprocessing.scale(arrValue1)  
+        strMeansInfo = strMeansInfo + '\n Min, Mean, SD, Median, Max of (T2 scaled with outliers) data: \n'
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1Scaled)) + '\t' + str(np.mean(arrValue1Scaled)) + '\t' + str(np.std(arrValue1Scaled)) + '\t' + str(np.median(arrValue1Scaled)) + '\t' + str(np.max(arrValue1Scaled)) + '\n'
+        print strMeansInfo
+        ###-------------------
+        strMeansInfo = strMeansInfo + '\n Min, Mean, SD, Median, Max of (T2 scaled without outliers) data: \n'
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1NoOutliersScaled)) + '\t' + str(np.mean(arrValue1NoOutliersScaled)) + '\t' + str(np.std(arrValue1NoOutliersScaled)) + '\t' + str(np.median(arrValue1NoOutliersScaled)) + '\t' + str(np.max(arrValue1NoOutliersScaled)) + '\n'
+        print strMeansInfo
+
+        # for further analysis ADD the eliminated outliers, applied a correction to them        
+        scaler = preprocessing.StandardScaler().fit(arrValue1NoOutliers)
+        print scaler
+        print scaler.mean_                                      
+        print scaler.std_    
+        arrValue1NoOutliersScaled2 = scaler.transform(arrValue1NoOutliers)
+        # apply this transformation to the outliers        
+        arrValue1OutliersSmallScaled = scaler.transform(arrValue1OutliersSmall)   
+        arrValue1OutliersBigScaled = scaler.transform(arrValue1OutliersBig)   
+        # add this data to the array
+        idxSmall = [arrValue1 <= percentile1]
+        idxOK = [(arrValue1 > percentile1) & (arrValue1 < percentile99)]
+        idxBig = [arrValue1 >= percentile99]
+        arrValue1[idxSmall] = arrValue1OutliersSmallScaled
+        arrValue1[idxBig] = arrValue1OutliersBigScaled
+        arrValue1[idxOK] = arrValue1NoOutliersScaled2
+        # now arrValue1 contains all the original data, scaled!!! using only non-outliers data
+        strMeansInfo = strMeansInfo + '\n Min, Mean, SD, Median, Max of (T2 scaled without outliers, added scaled outliers) data: \n'
+        strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
+        print strMeansInfo
+        #print arrValue1NoOutliersScaled.mean(axis=0)
+        #print arrValue1NoOutliersScaled.mean()
+        #print arrValue1NoOutliersScaled.std(axis=0)
+        #print arrValue1NoOutliersScaled.std()
+        #sys.exit(0)
         
         coords = arrCoord1[arrCoord1 != 0]
         values = arrValue1[arrCoord1 != 0]
-        
-        ids = np.where(arrCoord1 != 0)
-        print len(ids), ' len(ids) ', len(coords), ' len(coords) '
-        # got the ids. now need to get x, y coordinates
-        #print volCoord.getX()[1:10]
-        
+                
         ########################## now need to extract profiles in ROIs separately
         # get unique values for the mask
         roiIds = np.unique(mask[np.where(mask > 0)])
         for i in roiIds:
             if i != 0:
                 print 'work with ROI ', i
+                # old version
+                #arrCoord1i = arrCoord[mask == i]
+                #arrValue1i = arrValue[mask == i]
+                
+                #new version - need the scaled data! TODO: check!
+                arrCoord[mask != 0] = arrCoord1
+                arrValue[mask != 0] = arrValue1  
+                
                 arrCoord1i = arrCoord[mask == i]
-                arrValue1i = arrValue[mask == i]
+                arrValue1i = arrValue[mask == i]                
                 
                 coordsi = arrCoord1i[arrCoord1i != 0]
                 valuesi = arrValue1i[arrCoord1i != 0]
@@ -113,16 +175,15 @@ def extractProfiles(volCoord, volValue, volMask = None):
         coords = arrCoord[arrCoord != 0]
         values = arrValue[arrCoord != 0]
         
-    # 2 arrays of coordinates and values. Plot them
     res = []
     res.append(coords)
     res.append(values)
     res.append(roiIds)
     res.append(listOfSeparateCoords)
     res.append(listOfSeparateValues)
+    res.append(strMeansInfo)
     return(res)       
     
-
     
 def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrThr, volMask = None):
     """
@@ -470,13 +531,12 @@ def computeRanges(arr, fileF, keyWord):
 
 
 # this function will verify whether the Voronoi segmentation of the ROIs is 
-# outside of the T2 acquired images# further, it will notify if voronoi touches the lower or the upper 4 layers of T2
-def testVoronoiOutsideT2(voronoiVol, T2Vol, numOfLayerToAvoid, fileStat = None):
-    print '----------------------- start testVoronoiOutsideT2 --------------------------------------'
-    arrVoronoi = np.asarray(voronoiVol)
-    arrT2 = np.asarray(T2Vol)
-    #print 'arrVoronoi ', np.shape(arrVoronoi),', arrT2 ', np.shape(arrT2)   
-   
+# outside of the T2 acquired images
+# further, it will notify if voronoi touches the lower or the upper 4 layers of T2 - this was excluded, 
+# as Denis has cut out 'dark' layers
+# If Voronoi covers zero T2 layers, the upper and the lower allowed limits will be returned
+def testVoronoiOutsideT2(arrVoronoi, arrT2, numOfLayerToAvoid, fileStat = None):
+    print '----------------------- start testVoronoiOutsideT2 --------------------------------------'    
     # find z layers of T2 that are NOT completely zeros
     xCoordsAllT2, yCoordsAllT2, zCoordsAllT2, tCoordsAllT2 = np.where(arrT2 > 0)
     lowerNonZeroLayerT2 = np.max(zCoordsAllT2)       
@@ -490,6 +550,7 @@ def testVoronoiOutsideT2(voronoiVol, T2Vol, numOfLayerToAvoid, fileStat = None):
     print 'non zero z limits of Voronoi ', upperNonZeroLayerVor, lowerNonZeroLayerVor
     
     # write out info
+    allowedLayers = []    # these will be the numbers of layers (top and bottom) that CAN be used for profile extraction
     if fileStat is not None:
         fileStat.write('non zero z limits of T2 ' + str(upperNonZeroLayerT2) + ' , ' + str(lowerNonZeroLayerT2) + '\n')
         fileStat.write('non zero z limits of Voronoi ' + str(upperNonZeroLayerVor) + ' , ' + str(lowerNonZeroLayerVor) + '\n')
@@ -497,35 +558,47 @@ def testVoronoiOutsideT2(voronoiVol, T2Vol, numOfLayerToAvoid, fileStat = None):
     if (upperNonZeroLayerVor < upperNonZeroLayerT2):
         overlapTop = upperNonZeroLayerVor - upperNonZeroLayerT2
         print 'Problem! Voronoi in zero T2 layers from top! Overlap of %s layers!' %(overlapTop)
+        upperAllowedLayers = []
+        upperAllowedLayers.append(upperNonZeroLayerVor)      # old top limit
+        upperAllowedLayers.append(upperNonZeroLayerT2)       # new top limit
+        allowedLayers.append(upperAllowedLayers)     
         if fileStat is not None:
-            fileStat.write('Problem! Voronoi in zero T2 layers from top! Overlap of %s layers!\n' %(str(overlapTop)))            
-    # even if voronoi is NOT in the zero layer of T2 ,it might be in dark layers. Consider 4 top and bottom layers - too dark!
-    if (upperNonZeroLayerVor < (upperNonZeroLayerT2 + numOfLayerToAvoid)):
-        overlapTopDark = upperNonZeroLayerVor - (upperNonZeroLayerT2 + numOfLayerToAvoid)
-        print 'Problem! Voronoi in %s dark T2 layers from top! Overlap of %s layers!' %(numOfLayerToAvoid, overlapTopDark)
-        if fileStat is not None:
-            fileStat.write('Problem! Voronoi in %s dark T2 layers from top! Overlap of %s layers!\n' %(str(numOfLayerToAvoid), str(overlapTopDark)))         
+            fileStat.write('Problem! Voronoi in zero T2 layers from top! Overlap of %s layers!\n' %(str(overlapTop)))           
+            
     if (lowerNonZeroLayerVor > lowerNonZeroLayerT2):
         overlapBottom = lowerNonZeroLayerVor - lowerNonZeroLayerT2
         print 'Problem! Voronoi in zero T2 layers from bottom! Overlap of %s layers!' %(overlapBottom)    
+        bottomAllowedLayers = []
+        bottomAllowedLayers.append(lowerNonZeroLayerT2 + 1)      # old bottom limit (new top)
+        bottomAllowedLayers.append(lowerNonZeroLayerVor + 1)       # new bottom limit (old top)
+        allowedLayers.append(bottomAllowedLayers)
         if fileStat is not None:
             fileStat.write('Problem! Voronoi in zero T2 layers from bottom! Overlap of %s layers!\n' %(str(overlapBottom)))         
-    # even if voronoi is NOT in the zero layer of T2 ,it might be in dark layers. Consider 4 top and bottom layers - too dark!
-    if (lowerNonZeroLayerVor > (lowerNonZeroLayerT2 - numOfLayerToAvoid)):
-        overlapBottomDark = lowerNonZeroLayerVor - (lowerNonZeroLayerT2 - numOfLayerToAvoid)
-        print 'Problem! Voronoi in %s dark T2 layers from bottom! Overlap of %s layers!' %(numOfLayerToAvoid, overlapBottomDark)
-        if fileStat is not None:
-            fileStat.write('Problem! Voronoi in %s dark T2 layers from bottom! Overlap of %s layers!\n' %(str(numOfLayerToAvoid), str(overlapBottomDark))) 
+            
+    ################ do not need to check dark layers anymore, as Denis has cut them out ! ###################################        
+    ## even if voronoi is NOT in the zero layer of T2 ,it might be in dark layers. Consider 4 top and bottom layers - too dark!
+    #if (upperNonZeroLayerVor < (upperNonZeroLayerT2 + numOfLayerToAvoid)):
+        #overlapTopDark = upperNonZeroLayerVor - (upperNonZeroLayerT2 + numOfLayerToAvoid)
+        #print 'Problem! Voronoi in %s dark T2 layers from top! Overlap of %s layers!' %(numOfLayerToAvoid, overlapTopDark)
+        #if fileStat is not None:
+            #fileStat.write('Problem! Voronoi in %s dark T2 layers from top! Overlap of %s layers!\n' %(str(numOfLayerToAvoid), str(overlapTopDark)))         
+    ## even if voronoi is NOT in the zero layer of T2 ,it might be in dark layers. Consider 4 top and bottom layers - too dark!
+    #if (lowerNonZeroLayerVor > (lowerNonZeroLayerT2 - numOfLayerToAvoid)):
+        #overlapBottomDark = lowerNonZeroLayerVor - (lowerNonZeroLayerT2 - numOfLayerToAvoid)
+        #print 'Problem! Voronoi in %s dark T2 layers from bottom! Overlap of %s layers!' %(numOfLayerToAvoid, overlapBottomDark)
+        #if fileStat is not None:
+            #fileStat.write('Problem! Voronoi in %s dark T2 layers from bottom! Overlap of %s layers!\n' %(str(numOfLayerToAvoid), str(overlapBottomDark))) 
 
     #print 'number of voxels in mask that are nonzero ', len(np.where(arrVoronoi != 0)[0])
     minValArrT2 = np.min(arrT2)
     maxValArrT2 = np.max(arrT2)
-    #print minValArrT2, maxValArrT2
-    
-    arrT2[arrVoronoi == 0] = (maxValArrT2 + 10)
-    arrT2[arrT2 > 0] = (maxValArrT2 + 10)
+    #print minValArrT2, maxValArrT2    
+    # create a copy of the array
+    arrCopy = np.copy(arrT2)    
+    arrCopy[arrVoronoi == 0] = (maxValArrT2 + 10)
+    arrCopy[arrT2 > 0] = (maxValArrT2 + 10)
     # how many zero voxels are left
-    xCoords, yCoords, zCoords, tCoords = np.where(arrT2 == 0)
+    xCoords, yCoords, zCoords, tCoords = np.where(arrCopy == 0)
     print 'number of T2 zero in nonZero Voronoi mask ', len(xCoords)
  
     #print zip(xCoords, yCoords, zCoords)
@@ -539,11 +612,7 @@ def testVoronoiOutsideT2(voronoiVol, T2Vol, numOfLayerToAvoid, fileStat = None):
         fileStat.write('number of T2 zero in nonZero Voronoi mask %s \n' %(len(xCoords))) 
         fileStat.write('z coordinates of zeros and their counts %s \n' %(zip(unique, counts)))
     
-    #plt.show()
-
-    #sys.exit(0)
-    
-    return(0)
+    return(allowedLayers)
     
     
     
@@ -573,7 +642,7 @@ if __name__ == '__main__':
     #divGradnThresholds = [-0.25, 0.35]
     #divGradnThresholds = [-0.5, 0.5] #just for test
     heatCaluclation = None      # version of the heat volume (and so the corresponding columns) to use
-
+    addedColumnsDiamName = ''
 
     parser = OptionParser('Extract profiles from T2 nobias data using cortex-density-coordinates in ROIs')    
     parser.add_option('-p', dest='realPatientID', help='realPatientID')
@@ -644,6 +713,7 @@ if __name__ == '__main__':
     #volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
     #volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
     volValue2 = aims.read(pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))
+    arrValue = np.array(volValue2, copy = False)
     volsMask = glob.glob(pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
     print 'volsCoord = ' , pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
     print 'volsMask = ', pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide)
@@ -651,6 +721,10 @@ if __name__ == '__main__':
     volClassifNoBorders = pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
     fT2intensInfo = open(pathToColumnResults + '%s_%s_statFileProfiles.txt' %(realPatientID, realSide), "w")
 
+    divGradnClasses = pathToColumnResults + 'divGradnClasses/'
+    if not os.path.exists(divGradnClasses):
+        os.makedirs(divGradnClasses)
+        
     # test if all data is available
     if len(volsCoord) != 1 or len(volsMask) != 1:
         # abort the calculation, as too many or not a single texture file was found
@@ -661,22 +735,40 @@ if __name__ == '__main__':
         
     volCoord = aims.read(volsCoord[0])  
     volMask = aims.read(volsMask[0])
+    maskArray = np.array(volMask, copy = False)
     
-    
-    
-    ################ TODO ! ########  repeat this analysis for the new subjects!!!!!!!!!!!!!!!! #######################################################
-    ## test how many zeros in the data 
-    #testVoronoiOutsideT2(volMask, volValue2, 4, fT2intensInfo)    
-    #sys.exit(0)
-    ###################################################################################################################################################    
-    
-    # study T2 intensities for data cleaning  
-    maskGW = np.asarray(aims.read(volClassifNoBorders))
+    maskGW = np.array(aims.read(volClassifNoBorders), copy = False)
     print 'maskGW = ' , volClassifNoBorders
     volFullGW = pathToNew_T1inT2DB + '%s/t1mri/t1m_resamp/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realPatientID, realSide, realPatientID)    
     print 'volFullGW = ', volFullGW
-    maskGWFull = np.asarray(aims.read(volFullGW))# also compare to all data available in T2, not only ROIs
-    arrValue = np.asarray(volValue2)
+    maskGWFull = np.array(aims.read(volFullGW), copy = False)# also compare to all data available in T2, not only ROIs
+    
+    ################ TODO ! ########  repeat this analysis for the new subjects!!!!!!!!!!!!!!!! #######################################################
+    ## test how many zeros in the data         
+    
+    print '1. computeRanges(arrValue, fT2intensInfo, cortexROIs)'
+    computeRanges(arrValue, fT2intensInfo, 'cortexROIs')    
+    limitsAllowed = testVoronoiOutsideT2(maskArray, arrValue, 4, fT2intensInfo)
+
+    if len(limitsAllowed) != 0:
+        print 'limitsAllowed ', limitsAllowed
+        print 'Problem! limits need to be changed to top %s and bottom \n' %(str(limitsAllowed))
+        fT2intensInfo.write('Problem! limits need to be changed to top %s and bottom \n' %(str(limitsAllowed[0])))
+                
+        # T2 is 'thinner' in Z direction than the VoronoiMask. So, need to cut from the mask the extra layers
+        # cut the layers 
+        for cutL in range(len(limitsAllowed)):
+            currLimits = limitsAllowed[cutL]
+            print 'currLimits ', currLimits
+            for topL in (range(currLimits[0], currLimits[1])):
+                maskArray[:,:,topL,:] = 0
+                print 'set layer %s to zeros ' %(topL)
+         
+        # save the new volMask
+        aims.write(volMask, pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci_insideNonZeroT2.nii.gz' %(realPatientID, realSide))
+    #sys.exit(0)
+    ###################################################################################################################################################        
+    # study T2 intensities for data cleaning  
     arrValue1WM = arrValue[maskGW == 200] # get values in the WM
     arrValue1Cortex = arrValue[maskGW == 100] # get values in the cortex
     arrValue1CSF = arrValue[maskGW == 0] # get values in the CSF
@@ -692,7 +784,7 @@ if __name__ == '__main__':
     axCSF = fig.add_subplot(2,3,3)
     axCSF.hist(arrValue1CSF, bins = 50)
     axCSF.set_title('Histogram of T2 intensities in CSF')   # subplot 211 title
-    
+
     # just for test: the same but EXCLUDING zeros
     arrValue1CortexNoZeros = arrValue1Cortex[arrValue1Cortex > 0]
     arrValue1WMNoZeros = arrValue1WM[arrValue1WM > 0]
@@ -709,9 +801,8 @@ if __name__ == '__main__':
     #plt.savefig(pathToColumnResults + '%s_%s_histOfT2intensitiesInROIs.png' %(realPatientID, realSide))    
     plt.savefig(pathToColumnResults + '%s_%s_histOfT2intensInROIs.png' %(realPatientID, realSide))    
     plt.clf()
-    plt.close()
- 
-   
+    plt.close() 
+
     arrValue1WMFull = arrValue[maskGWFull == 200] # get values in the WM
     arrValue1CortexFull = arrValue[maskGWFull == 100] # get values in the cortex
     arrValue1CSFFull = arrValue[maskGWFull == 0] # get values in the CSF
@@ -747,14 +838,11 @@ if __name__ == '__main__':
     #fT2intensInfo.write('mean arrValue1Cortex = ' + str(np.round(meanV)) + ' sd= ' + str(np.round(sdV)) + ' mean +- 3sd = (' + str(lowerOutlierBorder) + ' , '+ str(upperOutlierBorder) + '), percentiles : (' + str(lowerPercentage) + ' , ' + str(upperPercentage) + ')\n')
     
     
-    # TODO: looks like the problem is here:
-    print 'problem?  ', np.mean(arrValue1Cortex)
-    
-    
-    
-    
-    computeRanges(arrValue1Cortex, fT2intensInfo, 'cortexROIs')
-    
+    # looks like the problem is here:
+    print 'problem?  ', np.mean(arrValue1Cortex)    
+    print '5. computeRanges(arrValue, fT2intensInfo, cortexROIs)'
+    computeRanges(arrValue, fT2intensInfo, 'cortexROIs')    
+  
 
     ######################## simulate the same EXCLUDING zeros (supposably segmentation errors)
     numZeros = len(np.where(arrValue1Cortex == 0)[0])
@@ -813,10 +901,14 @@ if __name__ == '__main__':
     # if no columns diameter was given, then extract profiles in the mask
     if columnDiameter is None:
         print '******************* no columns diameter was given, then extract profiles in the mask ***************************'    
-        #result = extractProfiles(volCoord, volValue, volMask)
-        # repeat for the NEW nobias images!
-        result2 = extractProfiles(volCoord, volValue2, volMask)
-    else:   # we work with columns! then calculate the required size. 
+        result2 = extractProfiles(volCoord, volValue2, volMask)              
+        addedColumnsDiamName = '_scaledNoOutlAddOutl'        
+        ## TODO! for test!!
+        #if len(limitsAllowed) != 0:      
+            #addedColumnsDiamName = '_scaledNoOutlAddOutl_nonZeroT2'    
+  
+    else:   # we work with columns! then calculate the required size.                 
+        addedColumnsDiamName = '_diam%s' %(columnDiameter) + '_scaledNoOutlAddOutl'        
         columnDiameter = int(options.columnDiameter)
         print '******************* columns diameter was given = ', str(columnDiameter) , ' extract profiles in the columns ***************************'
         # human cortical thickness 2 - 4mm
@@ -864,10 +956,7 @@ if __name__ == '__main__':
         print 'volColumns = ', volsColumns[0]        
         # read in the div_gradn file (for measuring the flatness of the resoective column region)
         volDivGradn = aims.read(pathToColumnResults + 'heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))          
-        print 'volDivGradn = ', pathToColumnResults + 'heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
-        #result = extractProfilesInColumns(volCoord, volValue, volColumns, volMask)
-        # repeat for the NEW nobias images!
-        
+        print 'volDivGradn = ', pathToColumnResults + 'heat/heat_div_gradn_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)        
         
         # Do NOT need to re-extract the profiles in the merged-randomized volume, which was cut!!! (so that regions 50 and 150, corresponding to borders, were eliminated, but write this volume out)
         print 'cut borders from the volume ', volsColumns[0]
@@ -876,42 +965,10 @@ if __name__ == '__main__':
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '0', '-v', '0', '-i', volsColumns[0], '-M', volClassifNoBorders, '-o', pathToColumnResults + 'column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)])
         
         subprocess.check_call(['AimsMerge', '-m', 'oo', '-l', '200', '-v', '0', '-i', pathToColumnResults + 'column_regions/traverses_without_CSF_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide), '-M', volClassifNoBorders, '-o', pathToColumnResults + 'column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)])
-              
-        # TODO : delete it!      
-        #sys.exit()
-        
         result2 = extractProfilesInColumns(volCoord, volValue2, volColumns, volDivGradn, divGradnThresholds, volMask)   
         
-        
-        
-        
-        
-
-        
-            
-    # work now only with the new nobias T2!!!!! commented the work with the old corrected nobias T2  
-    #coordinates = result[0]
-    #intensities = result[1]
-
-    ## plot the data
-    #plt.plot(coordinates, intensities, '.', c = 'b')
-    #plt.title('Profile in ROI')   # subplot 211 title
-    #plt.xlabel('Cortical depth')
-    #plt.ylabel('T2-nobias intensity')
-    #plt.savefig(pathToColumnResults + '%s_%s_It20_nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))
-
     coordinates2 = result2[0]
-    intensities2 = result2[1]
-
-    ## plot the data
-    #plt.plot(coordinates2, intensities2, '.', c = 'r')
-    #plt.title('Profile in ROI')   # subplot 211 title
-    #plt.xlabel('Cortical depth')
-    #plt.ylabel('T2-nobias intensity')
-    #plt.savefig(pathToColumnResults + '%s_%s_It20_2nobiasT2vsCorticalDepthROI.png' %(realPatientID, realSide))    
-    #plt.clf()
-    #plt.close()
-    
+    intensities2 = result2[1]    
     plt.plot(coordinates2, intensities2, '.', c = 'r')
     plt.title('Profile in all ROIs')   # subplot 211 title
     plt.xlabel('Cortical depth')
@@ -921,36 +978,39 @@ if __name__ == '__main__':
     plt.close()
   
     # save the data for further processing. 
-    #data1 = open(pathToColumnResults + '%s_%s_profiles.txt' %(realPatientID, realSide), "w")
     data2 = open(pathToColumnResults + '%s_%s_profiles2.txt' %(realPatientID, realSide), "w")
     headerLine = '\t' + 'DepthCoord' + '\t' + 'Value'
-    #data1.write(headerLine + '\n')
     data2.write(headerLine + '\n')
     for i in range(len(coordinates2)):
-        #data1.write(str(i) + '\t' + str(coordinates[i]) + '\t' + str(intensities[i]) + '\n')
         data2.write(str(i) + '\t' + str(coordinates2[i]) + '\t' + str(intensities2[i]) + '\n')
-    #data1.close()
     data2.close()
     
     ## now plot and save the data for individual ROIs
     iDs = result2[2]
     listOfCoords = result2[3]
-    listOfValues = result2[4]
-    listOfAvgDivGrads = result2[7]
-    volColouredByAvgDivGrads = result2[8]
-    listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
-    listOfAvgVoxelCoords = result2[10]
-    strMeansInfo = result2[11]  # add it to the file
+    listOfValues = result2[4]    
+    strMeansInfo = result2[len(result2) - 1]  # add it to the file
+    listOfAvgDivGrads = []
+    volColouredByAvgDivGrads = []
+    listOfAvgDivGradsCateg = []        # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
+    listOfAvgVoxelCoords = []
+
     fT2intensInfo.write('\n' + strMeansInfo + '\n')
     fT2intensInfo.close()
-    #sys.exit(0)
-    addedColumnsDiamName = ''
     pathForFiles = pathToColumnResults
     print '############################################ columnDiameter = ', str(columnDiameter)
-    if columnDiameter is not None:
-        addedColumnsDiamName = '_diam%s' %(columnDiameter)
-        # TODO: delete it after the tests!
-        addedColumnsDiamName = addedColumnsDiamName + '_scaledNoOutlAddOutl'        
+    if columnDiameter is not None:            
+        # read in the results for columns IDs in various regions
+        iDsInMaskROIs = result2[5]
+        listOfAvgDivGrads = result2[7]
+        volColouredByAvgDivGrads = result2[8]
+        listOfAvgDivGradsCateg = result2[9]         # a list of 3 categories : 10, 29 and 30, given according to the 2 set thresholds
+        listOfAvgVoxelCoords = result2[10]
+        
+        #test whether the length of ids and avgdivgradns is the same
+        if len(iDs) != len(listOfAvgDivGrads):
+            print 'lengths are unequal!!! ', len(iDs), len(listOfAvgDivGrads), ' force exit'
+            sys.exit(0)
 
         # if the result was for the columns, create a separate folder for it
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)
@@ -958,11 +1018,8 @@ if __name__ == '__main__':
             os.makedirs(pathForFiles)
         print '############################################ created directory = ', pathForFiles
 
-        # read in the results for columns IDs in various regions
-        iDsInMaskROIs = result2[5]
         
     # write out a file with the info: Column ID, size, maskROI (belongs to it or not), To be ignored
-    maskArray = np.asarray(volMask)
     maskROIids = np.unique(maskArray[np.where(maskArray > 0)])            
     dataS = open(pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName), "w")
     headerInfo = '\tColumnID\tSize\tAvgX\tAvgY\tAvgZ\tAvgDivGradn'
@@ -973,41 +1030,27 @@ if __name__ == '__main__':
             headerInfo += '\tMaskROI_' + str(maskROIids[i]) + '\t'    
         headerInfo += 'ToIgnore\n'    
     else:
-        headerInfo += '\n'    
+        headerInfo = '\tColumnID\tSize\n'    
         
     dataS.write(headerInfo)    
-    sizeSorted = pathForFiles + 'sortedBySize/'
-    divGradnSorted = pathForFiles + 'sortedByDivGradn/'
-    divGradnClasses = pathToColumnResults + 'divGradnClasses/'
-    corticalLayers = pathForFiles + 'corticalLayers/'
-
-    if not os.path.exists(sizeSorted):
-        os.makedirs(sizeSorted)
-    if not os.path.exists(divGradnSorted):
-        os.makedirs(divGradnSorted)
-    if not os.path.exists(divGradnClasses):
-        os.makedirs(divGradnClasses)
-    if not os.path.exists(corticalLayers):
-        os.makedirs(corticalLayers)
-       
-    #test whether the length of ids and avgdivgradns is the same
-    if len(iDs) != len(listOfAvgDivGrads):
-        print 'lengths are unequal!!! ', len(iDs), len(listOfAvgDivGrads), ' force exit'
-        sys.exit(0)
-    
+               
     for i in range(len(iDs)):
         #print '------------------ i = ', i, ' work with id', iDs[i]
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
-        currAvgVoxelCoords = listOfAvgVoxelCoords[i]
         
-        # get the info on the gradient
-        currGradn = listOfAvgDivGrads[i]
-        strCurrGradn = "%.3f" % currGradn
-        strCurrGradnStr = str(strCurrGradn).replace('.','')           
-        currLine = '\t%s\t%s\t%s\t%s\t%s\t%s' %(str(iDs[i]), len(currCoords), str("%.3f" % currAvgVoxelCoords[0]), str("%.3f" % currAvgVoxelCoords[1]), str("%.3f" % currAvgVoxelCoords[2]), strCurrGradn)
-        # add info on Mask ROIs. if diameter was given
-        if columnDiameter is not None:
+        # treat the case without Columns
+        if columnDiameter is None:
+            currLine = '\t%s\t%s\n' %(str(iDs[i]), len(currCoords))
+            dataS.write(currLine)
+        else:            
+            currAvgVoxelCoords = listOfAvgVoxelCoords[i]
+            # get the info on the gradient
+            currGradn = listOfAvgDivGrads[i]
+            strCurrGradn = "%.3f" % currGradn
+            strCurrGradnStr = str(strCurrGradn).replace('.','')           
+            currLine = '\t%s\t%s\t%s\t%s\t%s\t%s' %(str(iDs[i]), len(currCoords), str("%.3f" % currAvgVoxelCoords[0]), str("%.3f" % currAvgVoxelCoords[1]), str("%.3f" % currAvgVoxelCoords[2]), strCurrGradn)
+            # add info on Mask ROIs. if diameter was given
             for j in range(len(maskROIids)):
                 #print 'j = ', j, 'iDsInMaskROIs[j] = ', iDsInMaskROIs[j]
                 if iDs[i] in iDsInMaskROIs[j]:
@@ -1015,16 +1058,19 @@ if __name__ == '__main__':
                     #print iDs[i], ' is in the list'
                 else:
                     currLine += '\t0'
-                    #print iDs[i], ' is NOT in the list'                    
-                    
-            # check if this element is in a list to be ignored
-            #print 'a list to be ignored: ', iDsInMaskROIs[j + 1]
-            if iDs[i] in iDsInMaskROIs[j + 1]:
-                currLine += '\t1'
-                #print 'ignore ', i
-            else:
-                currLine += '\t0'  
+                    #print iDs[i], ' is NOT in the list'   
+                        
+                # check if this element is in a list to be ignored
+                #print 'a list to be ignored: ', iDsInMaskROIs[j + 1]
+                if iDs[i] in iDsInMaskROIs[j + 1]:
+                    currLine += '\t1'
+                    #print 'ignore ', i
+                else:
+                    currLine += '\t0'  
        
+            currLine += '\n'
+            dataS.write(currLine)
+        
         # do not plot if it is zero
         if len(currCoords) != 0:   
             data2i = open(pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
@@ -1033,12 +1079,11 @@ if __name__ == '__main__':
                 data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
             data2i.close()              
             
+        # TODO! what is it??    
         plt.clf()
         plt.close()     
-        currLine += '\n'
-        dataS.write(currLine)
+
     dataS.close()    
-        
     
     # plot the ROIs from the mask (columns of any size) on one plot
     roiNames = ''
@@ -1047,6 +1092,8 @@ if __name__ == '__main__':
         currCoords = listOfCoords[i]
         currValues = listOfValues[i]
         plt.plot(currCoords, currValues, '.', label = 'ROI ' + str(iDs[i]))
+        #print currValues[1:500]
+        #print currCoords#[1:500]
         
     plt.title('Profile in mask ROIs')   
     plt.xlabel('Cortical depth')
@@ -1062,6 +1109,9 @@ if __name__ == '__main__':
     plt.clf()
     plt.close() 
      
+     
+    ####################################
+    
     strT = (str(divGradnThresholds[0]) + '_' +  str(divGradnThresholds[1])).replace('.','')         # transform thresholds into the string            
     # get results for various sizes of columns
     if columnDiameter is not None:
@@ -1161,7 +1211,6 @@ if __name__ == '__main__':
         listsOfValuesForMaskVariousThrADGb = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)] 
         listsOfColumnIDsForMaskVariousThrADGb = [[[] for y in range(len(minColumnSizes))] for x in range(len(iDsInMaskROIs) - 1)]
         
-        maskArray = np.asarray(volMask)
         maskROIids = np.unique(maskArray[np.where(maskArray > 0)])
         
         for j in range(len(maskROIids)):

@@ -14,3 +14,4 @@ install_manifest.txt
 # Python
 __pycache__/
 *.py[cod]
+*~

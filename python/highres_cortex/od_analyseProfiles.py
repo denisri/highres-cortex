@@ -82,7 +82,10 @@ if __name__ == '__main__':
     columnDiameter = None
     workOnLaptop = False
     numOfLayersToUse = 6
-
+    heatCaluclation = None      # version of the heat volume (and so the corresponding columns) to use
+    pathToNobiasT2_newCroppedDB = '/neurospin/lnao/dysbrain/brainvisa_db_T2_cropped/dysbrain/'   
+    pathToNew_T1inT2DB = '/neurospin/lnao/dysbrain/brainvisa_db_T1_in_T2_space/dysbrain/'
+    pathToNobiasT2_newCroppedDB = '/neurospin/lnao/dysbrain/brainvisa_db_T2_cropped/dysbrain/'   
 
 
 #    corticalIntervals = [0, 0.1, 0.2, 0.5, 0.62, 0.82, 1.0]
@@ -101,6 +104,7 @@ if __name__ == '__main__':
     #parser.add_option('-t', dest='threshold', help='threshold to work with')
     parser.add_option('-d', dest='directory', help='directory')
     parser.add_option('-l', dest='workOnLaptop', action = 'store_true', help='Select if working on laptop (neurospin DB location is different. False is default') 
+    parser.add_option('-j', dest='heatCaluclation', help='Version of the heat calculation program: old or new') 
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
@@ -128,19 +132,37 @@ if __name__ == '__main__':
         numOfLayersToUse = options.numOfLayersToUse
     else:
         print >> sys.stderr, 'Keep numOfLayersToUse = 6'  
-     
-    pathToimagesInNewT2Space_LinearCropped10 = '/neurospin/lnao/dysbrain/imagesInNewT2Space_LinearCropped10/'
-	
+        
+    if options.heatCaluclation is None:
+        print >> sys.stderr, 'New: exit. No version for the heat calculation was given'
+        sys.exit(1)
+    else:
+        heatCaluclation = options.heatCaluclation
+
+    pathToColumnResults = ''
+    # set it depending on the version of the heat equation that has to be used
+    if heatCaluclation == 'old':
+        print 'selected the old version for the heat calculation'
+        pathToColumnResults = directory + '%s_T1inT2_ColumnsCutNew20It_NewDB/' %(realPatientID)        
+    elif heatCaluclation == 'new':
+        print 'selected the new version for the heat calculation'
+        pathToColumnResults = directory + '%s_T1inT2_ColumnsCutNew20It_NewDB_NewHeat/' %(realPatientID)        
+    else:
+        print 'selected the wrong keyword for the version for the heat calculation. Exit'
+        sys.exit(0)    
+     	
     if options.workOnLaptop is not None:
 	workOnLaptop = options.workOnLaptop      
 	# if true, then processes are run on the laptop. Change locations of neurospin DBs
 	# TODO! check! which one to use!
 	#directory = directory.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')        
 	directory = directory.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')  
-	pathToimagesInNewT2Space_LinearCropped10 = pathToimagesInNewT2Space_LinearCropped10.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+        pathToNobiasT2_newCroppedDB = pathToNobiasT2_newCroppedDB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
+        pathToNew_T1inT2DB = pathToNew_T1inT2DB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')	
+        pathToNobiasT2_newCroppedDB = pathToNobiasT2_newCroppedDB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
 
     addedColumnsDiamName = ''
-    pathForFiles = directory
+    pathForFiles = pathToColumnResults
     
     if options.columnDiameter is not None:
         columnDiameter = int(options.columnDiameter)
@@ -149,10 +171,8 @@ if __name__ == '__main__':
         pathForFiles = pathForFiles + 'diam%s/'%(columnDiameter)
         print '############################################ found profile directory = ', pathForFiles
 
-
     sizeSorted = pathForFiles + 'sortedBySize/'
     divGradnSorted = pathForFiles + 'sortedByDivGradn/'
-    divGradnClasses = directory + 'divGradnClasses/'
     corticalLayers = pathForFiles + 'corticalLayers/'
     classification = pathForFiles + 'classification/'
 
@@ -160,12 +180,14 @@ if __name__ == '__main__':
         os.makedirs(sizeSorted)
     if not os.path.exists(divGradnSorted):
         os.makedirs(divGradnSorted)
-    if not os.path.exists(divGradnClasses):
-        os.makedirs(divGradnClasses)
     if not os.path.exists(corticalLayers):
         os.makedirs(corticalLayers)
     if not os.path.exists(classification):
         os.makedirs(classification)
+        print 'created classification = ', classification
+    else:
+        print 'existed classification = ', classification
+
 
     #if options.threshold is None:
         #print >> sys.stderr, 'New: exit. no threshold given'
@@ -175,20 +197,21 @@ if __name__ == '__main__':
         
     # TODO: for test. maybe delete it later
     # plot histograms for the intensities in CSF, cortex and WM
-    pathToClassifNoBorders = directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+    pathToClassifNoBorders = pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
     volGWNoborders = aims.read(pathToClassifNoBorders)
     arrGWNoborders = np.array(volGWNoborders)
-    pathToClassifWithBorders = directory + '%s_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide)
+    pathToClassifWithBorders = pathToColumnResults + '/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
     volGWborders = aims.read(pathToClassifWithBorders)
     arrGWborders = np.array(volGWborders)
-    pathToNobiasT2_new = pathToimagesInNewT2Space_LinearCropped10 +  'T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID)
+    pathToNobiasT2_new = pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID)
     volT2 = aims.read(pathToNobiasT2_new)
     arrT2 = np.array(volT2)
     statFileName = classification + "statFile_analyzeProf_%s_%s.txt" %(realPatientID, realSide)
+    print 'statFileName = ', statFileName
     f = open(statFileName, "w")
-    f.write('pathToClassifNoBorders\t' + directory + '%s_T1inT2_ColumnsCutNew20It/GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide) + '\n')
-    f.write('pathToClassifWithBorders\t' + directory + '%s_T1inT2_ColumnsCutNew20It/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realPatientID, realSide) + '\n')
-    f.write('pathToNobiasT2_new\t' + pathToimagesInNewT2Space_LinearCropped10 +  'T2_nobias_FR5S16/%s_NewT2_cropped.nii.gz' %(realPatientID) + '\n')    
+    f.write('pathToClassifNoBorders\t' + pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide) + '\n')
+    f.write('pathToClassifWithBorders\t' + pathToColumnResults + '/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide) + '\n')
+    f.write('pathToNobiasT2_new\t' + pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID) + '\n')    
 
     arr150 = arrT2[arrGWborders == 150]
     arr50 = arrT2[arrGWborders == 50]
@@ -208,18 +231,35 @@ if __name__ == '__main__':
     plt.close()
         
     # read in the columns info file
-    infoFileName = pathForFiles + '%s_%s_ColumnInfo%s.txt' %(realPatientID, realSide, addedColumnsDiamName)
+    toLookFor = pathForFiles + '%s_%s_ColumnInfo_*' %(realPatientID, realSide)    
+    #print 'toLookFor = ', toLookFor
+    infoFileNames = glob.glob(toLookFor)                              
+    # check how many files there are. only if one -> no ambiguity
+    if len(infoFileNames) != 1:
+        print 'abort the calculation, as too many or not a single column info file was found'
+        f.write('abort the calculation, as ' + str(len(infoFileNames)) + ' column info files were found' + '\n')
+        f.close()
+        sys.exit(0)
+    
+    infoFileName = infoFileNames[0]    
+    # extract the keyword
+    addedColumnsDiamName = (infoFileName.split('_ColumnInfo_')[1]).split('.txt')[0]
+    print 'extracted addedColumnsDiamName = ', addedColumnsDiamName    
+    #ad140157_L_ColumnInfo_diam3_scaledNoOutlAddOutl.txt                              
+    #ad140157_L_profiles2_diam3_scaledNoOutlAddOutl_ROI_511
     columnID, size, avgX, avgY, avgZ, avgDivGradn  = np.loadtxt(infoFileName, skiprows = 1, usecols = (0, 1, 2, 3, 4, 5), unpack=True)
     #print zip(columnID, size, avgX, avgY, avgZ, avgDivGradn)
         
-    # calculatethe size threshold for the columns
-    sizeThreshold = np.round(columnDiameter * columnDiameter * 4.0 / 4.0 * np.pi * 4.0 / 4.0) #(volume of a cylinder, diameter is given, resolution 0.5, height - 2mm minimum, and divided by 4 for conical cases, or too narrow cases)
+    # calculatethe size threshold for columns - (volume of a cylinder, diam is given, resolution 0.5, height - 2mm min, and divided by 4 for conical cases, or too narrow cases)
+    sizeThreshold = np.round(columnDiameter * columnDiameter * 4.0 / 4.0 * np.pi * 4.0 / 5.0) 
     print 'sizeThreshold = ', sizeThreshold
     f.write('sizeThreshold\t' + str(sizeThreshold) + '\n')    
     
     # find columns larger than this threshold
     largeIDs = columnID[np.where(size >= sizeThreshold)]
     print 'largeIDs = ', largeIDs
+    f.write('percentage of largeIDs is \t' + str((len(largeIDs) * 1.0/len(columnID)*100.0)) + '% \n') 
+    print 'percentage of largeIDs is \t' + str((len(largeIDs) * 1.0/len(columnID)*100.0))
     f.write('largeIDs\t' + str(largeIDs) + '\n') 
     completeN = 0
     incompleteN = 0
@@ -240,17 +280,12 @@ if __name__ == '__main__':
         # iterate through these profiles, calculate means, stdv in layers, plot figures, save files
         # find profiles of these large columns: ad140157_L_profiles2_diam3_ROI_259.txt - find all profile files like this one
         currID = int(largeIDs[i])
-        #print 'currID = ', currID
-        
-        # TODO! need the scaled data!!!!! generate scaled profiles!!!
-        
-        
-        profileFile = pathForFiles + '%s_%s_profiles2%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID))
+        #print 'currID = ', currID                        
+        #ad140157_L_profiles2_diam3_scaledNoOutlAddOutl_ROI_478.txt        - new names after scaling and adding scaled outliers!
+        profileFile = glob.glob(pathForFiles + '%s_%s_profiles2_%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID)))[0]
         #print 'work with file  ', profileFile
         currCoords, currValues  = np.loadtxt(profileFile, skiprows = 1, usecols = (1, 2), unpack=True)
         #print zip(depthCoord, value)
-        
-        
         
         fig = plt.figure(figsize=(2 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
         axPoints = fig.add_subplot(1,2,1)
@@ -265,8 +300,7 @@ if __name__ == '__main__':
         means = []
         stdvs = []
         xCoords = []
-        complete = True     # shows whether points in every cortical layer were found
-        
+        complete = True     # shows whether points in every cortical layer were found        
         # do the same for the case when we 'ignore' the layer I
         complete5Layers = True     # shows whether points in 5 cortical layers (II - VI) were found
         
@@ -278,8 +312,7 @@ if __name__ == '__main__':
             thisLayerValues = currValues[np.where((currCoords >= start) & (currCoords < stop))]
             # check the length: if zero: ignore this column
             if (complete & (len(thisLayerValues) == 0)):
-                complete = False          
-                
+                complete = False                          
             if (complete5Layers & (c != 0) & (len(thisLayerValues) == 0)):
                 complete5Layers = False
                 
@@ -289,21 +322,17 @@ if __name__ == '__main__':
             xCoords.append((start + stop) / 2.0)            
             #print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
 
-
         # collected the data for all layers. now plot for this particular column  
         axMeans.set_title('Mean and stdv values in cortical layers in maskROI %s' %(str(currID)))  
         axMeans.set_xlabel('Cortical depth') 
         axMeans.set_ylabel('T2-nobias intensity')                 
         axMeans.legend(loc='upper right', numpoints = 1)  
         
-        if complete:
-            # plot the profile for all 6 cortical layers
+        if complete:   # plot the profile for all 6 cortical layers
             axMeans.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', ecolor = 'r')
             plt.savefig(corticalLayers + '%s_%s_completeCortLay%s_size%s_ROI_%s%s.png' %(realPatientID, realSide, addedColumnsDiamName, str(len(currCoords)), str(currID), addedName))                
-#                plt.savefig(sizeSorted + 'complete%s_size%s_ROI_' %(addedColumnsDiamName, str(len(currCoords))) + str(iDs[i]) + '.png')
             # save txt files with means and stdvs !!
             dataCort = open(corticalLayers + '%s_%s_CortLay%s_ROI_%s%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(currID), addedName), "w")
-#                dataCort = open(pathForFiles + '%s_%s_CorticalLayers%s_ROI_%s.txt' %(realPatientID, realSide, addedColumnsDiamName, str(iDs[i])), "w")
             dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
     
             for j in range(len(xCoords)):
@@ -390,6 +419,7 @@ if __name__ == '__main__':
 #            plt.savefig(divGradnSorted + '%s_%s_nobiasT2%s_avgDivGradn%s_ROI_%s.png' %(realPatientID, realSide, addedColumnsDiamName, strCurrGradnStr, str(iDs[i])))
         plt.clf()
         plt.close()     
+    
     print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN 
     f.write('arrProfilesID6Layers\t' + str(arrProfilesID6Layers) + '\n') 
     # save extracted feature vectors
@@ -397,10 +427,10 @@ if __name__ == '__main__':
     np.save(classification + 'arrFeatures5Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures5Layers)  
     #print arrFeatures6Layers
 ######################################################## STATISTICAL ANALYSIS ####################################################################################
-
+    sys.exit(0)
 
     # TODO later: PCA, correlation analysis! cluster using these full feature vectors 
-
+    
 
 
 
