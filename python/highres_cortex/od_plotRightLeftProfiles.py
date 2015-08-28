@@ -130,17 +130,24 @@ if __name__ == '__main__':
     plt.ylabel('T2-nobias intensity')
     plt.plot(coordR, valueR, '.', c = 'r', label = 'R')
     plt.legend(loc='upper right', numpoints = 1)
-    plt.savefig(pathToColumnResults + '%s_LvsR_2nobiasT2.png' %(realPatientID))       
+    plt.savefig(pathToColumnResults + '%s_LvsR_2nobiasT2_%sHeat.png' %(realPatientID, heatCaluclation))  
+    
+    # also save this plot to a higher laval folder for comparison
+    higherDirLvsR = directory.split(realPatientID)[0] + 'LvsR/'       # create this dir if it does not exist yet
+    if not os.path.exists(higherDirLvsR):
+        os.makedirs(higherDirLvsR)
+        print 'created directory ', higherDirLvsR
+    plt.savefig(higherDirLvsR + '%s_LvsR_2nobiasT2_%sHeat.png' %(realPatientID, heatCaluclation))  
     plt.clf()
     plt.close()
+        
     
     # now plot L vs R in various ROIs
     # af140169_R_profiles2_ROI_21.txt, af140169_R_profiles2_ROI_11.txt and the same with L
-    pathToROIsProfL = pathToColumnResults + '%s_L_profiles2_ROI_[0-9]*.txt' %(realPatientID)
-    #print 'pathToROIsProfL'
-    #print pathToROIsProfL
-
-    pathToROIsProfR = pathToColumnResults + '%s_R_profiles2_ROI_[0-9]*.txt' %(realPatientID)
+    pathToROIsProfL = pathToColumnResults + '%s_L_profiles2_scaledNoOutlAddOutl_ROI_[0-9]*.txt' %(realPatientID)
+    print 'pathToROIsProfL'
+    print pathToROIsProfL
+    pathToROIsProfR = pathToColumnResults + '%s_R_profiles2_scaledNoOutlAddOutl_ROI_[0-9]*.txt' %(realPatientID)
     
     # check if both these profiles exist. and how many are there
     profROIsL = glob.glob(pathToROIsProfL)
@@ -151,7 +158,7 @@ if __name__ == '__main__':
     print 'profROIsR'
     print profROIsR
     numOfCommonRLregions = 0
-    
+
     for i in range(len(profROIsL)):
         # check if this L profile is from the same mask ROI as the right one:
         # check if the corresponding R - file exists
@@ -164,7 +171,8 @@ if __name__ == '__main__':
             numbROIsR, coordROIsR, valueROIsR = np.loadtxt(profROIsRcorrespond[0], skiprows = 1, unpack = True)
             
             # get the ROI ID
-            iD = (profROIsL[i].split('_L_profiles2_ROI_')[1]).split('.txt')[0] # '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ml140175/ml140175_R_profiles2_ROI_11.txt'
+            iD = (profROIsL[i].split('_ROI_')[1]).split('.txt')[0] #/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/ad140157/ad140157_T1inT2_ColumnsCutNew20It_NewDB/ad140157_L_profiles2_scaledNoOutlAddOutl_ROI_11.txt
+            
             # plot the data
             plt.plot(coordROIsL, valueROIsL, '.', c = 'b', label = 'L')
             plt.title('Profile in ROI %s ' %(iD))   # subplot 211 title
@@ -172,15 +180,23 @@ if __name__ == '__main__':
             plt.ylabel('T2-nobias intensity')
             plt.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
             plt.legend(loc='upper right', numpoints = 1)
-            plt.savefig(pathToColumnResults + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))   
-            
-            # TODO: delete later if no need: save profiles also to the outer folder!
-            #plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))    
+            plt.savefig(pathToColumnResults + '%s_LvsR_2nobiasT2_%sHeat_ROI_%s.png' %(realPatientID, heatCaluclation, iD))               
+            # save profiles also to the outer folder!    
+            plt.savefig(higherDirLvsR + '%s_LvsR_2nobiasT2_%sHeat_ROI_%s.png' %(realPatientID, heatCaluclation, iD))  
             plt.clf()
             plt.close() 
     print 'found ', numOfCommonRLregions, ' numOfCommonRLregions '       
             
        
+       
+    #sys.exit(0) ################################################################################################################################
+
+
+
+
+
+
+
     # plot these plots into 1 image
     fig = plt.figure(figsize=(21, 6)) #, dpi=80, facecolor='w', edgecolor='k')
     numOfCommonRLregions += 1
@@ -200,7 +216,7 @@ if __name__ == '__main__':
             numbROIsR, coordROIsR, valueROIsR = np.loadtxt(profROIsRcorrespond[0], skiprows = 1, unpack = True)
             
             # get the ROI ID
-            iD = (profROIsL[i].split('_L_profiles2_ROI_')[1]).split('.txt')[0]
+            iD = (profROIsL[i].split('_ROI_')[1]).split('.txt')[0]
             ax2 = fig.add_subplot(1,numOfCommonRLregions, 2 + i)
             ax2.plot(coordROIsL, valueROIsL, '.', c = 'b', label = 'L')
             ax2.set_title('Profile in ROI %s' %(iD))   # subplot 211 title
@@ -211,7 +227,9 @@ if __name__ == '__main__':
 
     #plt.show()
     print 'save the image /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s_LvsR_allVsROIs.png' %(realPatientID)
-    plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_allVsROIs.png' %(realPatientID), bbox_inches='tight')    
+    plt.savefig(pathToColumnResults + '%s_LvsR_%sHeat_allVsROIs.png' %(realPatientID, heatCaluclation), bbox_inches='tight')               
+    # save also to the outer folder!    
+    plt.savefig(higherDirLvsR + '%s_LvsR_%sHeat_allVsROIs.png' %(realPatientID, heatCaluclation), bbox_inches='tight')              
     plt.clf()
     plt.close()
     print 'saved the image /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s_LvsR_allVsROIs.png' %(realPatientID)
