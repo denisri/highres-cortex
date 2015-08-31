@@ -191,7 +191,7 @@ if __name__ == '__main__':
        
     #sys.exit(0) ################################################################################################################################
 
-
+    # for better comparison: plot the same plots but given max min scaled intensity ranges (-6, 10)
 
 
 
@@ -206,6 +206,8 @@ if __name__ == '__main__':
     ax1.set_xlabel('Cortical depth')
     ax1.set_ylabel('T2-nobias intensity')
     ax1.plot(coordR, valueR, '.', c = 'r', label = 'R')
+    #added
+    ax1.set_ylim([-6, 10])
     ax1.legend(loc='upper right', numpoints = 1)
    
     for i in range(len(profROIsL)):
@@ -223,13 +225,15 @@ if __name__ == '__main__':
             ax2.set_xlabel('Cortical depth')
             ax2.set_ylabel('T2-nobias intensity')
             ax2.plot(coordROIsR, valueROIsR, '.', c = 'r', label = 'R')
+            #added
+            ax2.set_ylim([-6, 10])
             ax2.legend(loc='upper right', numpoints = 1)
 
     #plt.show()
     print 'save the image /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s_LvsR_allVsROIs.png' %(realPatientID)
-    plt.savefig(pathToColumnResults + '%s_LvsR_%sHeat_allVsROIs.png' %(realPatientID, heatCaluclation), bbox_inches='tight')               
+    plt.savefig(pathToColumnResults + '%s_LvsR_%sHeat_allVsROIs_uniqueY.png' %(realPatientID, heatCaluclation), bbox_inches='tight')               
     # save also to the outer folder!    
-    plt.savefig(higherDirLvsR + '%s_LvsR_%sHeat_allVsROIs.png' %(realPatientID, heatCaluclation), bbox_inches='tight')              
+    plt.savefig(higherDirLvsR + '%s_LvsR_%sHeat_allVsROIs_uniqueY.png' %(realPatientID, heatCaluclation), bbox_inches='tight')              
     plt.clf()
     plt.close()
     print 'saved the image /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/%s_LvsR_allVsROIs.png' %(realPatientID)
