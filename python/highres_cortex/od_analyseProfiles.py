@@ -42,10 +42,10 @@
 
 
 # example how to run this file on a laptop:
-# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_analyseProfiles.py -p at140353 -s L -c 3 -d /volatile/od243208/neurospin/testBatchColumnsExtrProfiles/at140353/ -l
+# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_analyseProfiles.py -p at140353 -s L -c 3 -d /volatile/od243208/neurospin/testBatchColumnsExtrProfiles_NewDB/at140353/ -l -j new
 
 # on a local machine:
-# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_analyseProfiles.py -p at140353 -s L -c 3 -d /volatile/od243208/neurospin/testBatchColumnsExtrProfiles/at140353/
+# python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_analyseProfiles.py -p at140353 -s L -c 3 -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/at140353/ -j new
 
 import random
 from soma import aims, aimsalgo
@@ -70,6 +70,7 @@ from scipy.cluster.vq import kmeans,vq
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import pairwise_distances
 from sklearn import preprocessing
+from sklearn.decomposition import PCA
 
 if __name__ == '__main__':
     
@@ -108,6 +109,12 @@ if __name__ == '__main__':
     options, args = parser.parse_args(sys.argv)
     print options
     print args   
+    
+    #realPatientID = 'at140353'
+    #realSide = 'L'
+    #columnDiameter = 3
+    #directory = '/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/at140353/'
+    #heatCaluclation = 'new'
     
     if options.directory is None:
         print >> sys.stderr, 'New: exit. no directory given'
@@ -187,8 +194,7 @@ if __name__ == '__main__':
         print 'created classification = ', classification
     else:
         print 'existed classification = ', classification
-
-
+    
     #if options.threshold is None:
         #print >> sys.stderr, 'New: exit. no threshold given'
         #sys.exit(1)
@@ -229,10 +235,10 @@ if __name__ == '__main__':
     plt.savefig(directory + '%s_%s_histOfT2nobiasIntensities.png' %(realPatientID, realSide))    
     plt.clf()
     plt.close()
-        
+            
     # read in the columns info file
     toLookFor = pathForFiles + '%s_%s_ColumnInfo_*' %(realPatientID, realSide)    
-    #print 'toLookFor = ', toLookFor
+    print 'columns info file toLookFor = ', toLookFor
     infoFileNames = glob.glob(toLookFor)                              
     # check how many files there are. only if one -> no ambiguity
     if len(infoFileNames) != 1:
@@ -241,6 +247,7 @@ if __name__ == '__main__':
         f.close()
         sys.exit(0)
     
+
     infoFileName = infoFileNames[0]    
     # extract the keyword
     addedColumnsDiamName = (infoFileName.split('_ColumnInfo_')[1]).split('.txt')[0]
@@ -420,16 +427,55 @@ if __name__ == '__main__':
         plt.clf()
         plt.close()     
     
-    print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN 
+    print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN, ' from total of ', len(columnID)
     f.write('arrProfilesID6Layers\t' + str(arrProfilesID6Layers) + '\n') 
     # save extracted feature vectors
     np.save(classification + 'arrFeatures6Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures6Layers)
     np.save(classification + 'arrFeatures5Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures5Layers)  
     #print arrFeatures6Layers
-######################################################## STATISTICAL ANALYSIS ####################################################################################
-    sys.exit(0)
 
-    # TODO later: PCA, correlation analysis! cluster using these full feature vectors 
+#################################################################################################################################################################
+#######################################################  STATISTICAL ANALYSIS  ##################################################################################
+#################################################################################################################################################################
+
+    # work with 5 or 6 layers?
+    data = []
+    if numOfLayersToUse == 6:
+        data = arrFeatures6Layers
+    elif numOfLayersToUse == 5:
+        data = arrFeatures5Layers
+
+    ############################ PCA, correlation analysis! cluster using these full feature vectors 
+
+    #X = np.array([[-1, -1], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])
+    #pca = PCA(n_components=2)
+    #pca.fit(X)
+    #PCA(copy=True, n_components=2, whiten=False)
+    #print(pca.explained_variance_ratio_) 
+    #[ 0.99244...  0.00755...]
+
+    pca = PCA(n_components = 2)
+    pca.fit(data)
+    print(pca.explained_variance_ratio_) 
+    f.write('PCA(n_components = 2), explained_variance_ratio_\t' + str(pca.explained_variance_ratio_) + '\n') 
+    #[  7.94485291e-01   1.46662429e-01   3.95866252e-02   1.79609243e-02
+    #5.54970106e-04   2.63572886e-04   1.88952565e-04   8.36929421e-05]   - if n_components = 8
+    print 'total covered variance is ', np.sum(pca.explained_variance_ratio_)
+    f.write('total covered variance is \t' + str(np.sum(pca.explained_variance_ratio_)) + '\n') 
+
+    # looks like 2-3 components should be enough. print them and save them
+    data_PCA2 = pca.fit_transform(data)
+    print 'done PCA transform for 2 components. Save the result at ', classification + 'arrFeatures%sLayers_%s_%s_PCA2.npy' %(str(numOfLayersToUse), realPatientID, realSide)
+    np.save(classification + 'arrFeatures%sLayers_%s_%s_PCA2.npy' %(str(numOfLayersToUse), realPatientID, realSide), data_PCA2)
+    print data_PCA2
+    
+    # can now use this data for clustering
+    
+    
+    
+    
+    
+    # linear model of PCA components? - need a 'response variable'. - this will be the z-score
     
 
 
@@ -451,16 +497,14 @@ if __name__ == '__main__':
     #plot(centroids[:,0],centroids[:,1],'sg',markersize=8)
     #show()
 
-    # work with 5 or 6 layers?
-    data = []
-    if numOfLayersToUse == 6:
-        data = arrFeatures6Layers
-    elif numOfLayersToUse == 5:
-        data = arrFeatures5Layers
+
+
+
+
     
     # data scaling TODO!
     data_scaled = preprocessing.scale(data)
-    
+    data_PCA2_scaled = preprocessing.scale(data_PCA2)
     #print zip(data, data_scaled)    
     
     # TODO! try data normalization?
@@ -516,12 +560,21 @@ if __name__ == '__main__':
     
     
     
-    #2. scaled data. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients
-    testName = '_dataScaled_%d_featureVect' %(numOfLayersToUse)
-    dataToUse = data_scaled
-    f.write('testName\t' + testName + '\n') 
+    ##2. scaled data. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients
+    datasToUse = [data_scaled, data_PCA2_scaled]
+    testNames = ['_dataScaled_%d_featureVect' %(numOfLayersToUse), '_dataPCA2Scaled_%d_featureVect' %(numOfLayersToUse)]
     
     
+    
+    #testName = '_dataScaled_%d_featureVect' %(numOfLayersToUse)
+    #dataToUse = data_scaled
+    #f.write('testName\t' + testName + '\n') 
+    
+    #2 - a. scaled data after PCA reduction. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients
+    #testName = '_dataPCA2Scaled_%d_featureVect' %(numOfLayersToUse)
+    #dataToUse = data_PCA2_scaled
+    #f.write('testName\t' + testName + '\n') 
+   
     
     
 
@@ -531,61 +584,63 @@ if __name__ == '__main__':
                                     #linkage="average", affinity=metric)
     #model.fit(X)
     
-    
-   
-    labelsVariousK = []
-    # take the initial volume with columns and colour it according to the labels
-    inertiaVariousK = []
-    
-    for name, est in estimators.items():
-	print 'start model ', name
-        f.write('model\t' + name + '\n') 
-        #est.fit(arrProfiles6Layers)
-        est.fit(dataToUse)
-        labels = est.labels_
-        print labels
-        labelsVariousK.append(labels)
-        # save the labels as a file
-        labelsFile = open(classification + 'labels_%s_%s_%s%s.txt' %(realPatientID, realSide, name, testName), 'w')
-        labelsFile.write('labels\t' + str(labels) + '\n')
-        labelsFile.close()
-        # TODO! write out other parameters of the estimator!
-        
-        #inertia = est.inertia_
-        #inertiaVariousK.append(inertia)
-        
+    for dataToUse, testName in zip(datasToUse, testNames):       
+        labelsVariousK = []
         # take the initial volume with columns and colour it according to the labels
-        volColumns = aims.read(directory + '/%s_T1inT2_ColumnsCutNew20It/traverses_cortex_only.nii.gz' %(realPatientID))
-        arrColumns = np.array(volColumns, copy = False)
-        maxID = np.max(arrColumns)
-        # compare the lengths
-        print len(labels), len(data)
-        print 'num of unique labels ', len(np.unique(arrColumns))
-        
-        # colour the initial columns volume into labels, and zero
-        # to avoid the same colours:
-        labelsUpdated = [((i + 1) * 10 + maxID) for i in labels]       
-        print zip(arrProfilesID6Layers, labels, labelsUpdated)
-        
-        for iD, newLabel, newLabelUpdated in zip(arrProfilesID6Layers, labels, labelsUpdated):
-	    #numToReplace = len(np.where(arrColumns == iD)[0])
-            #print iD, len(arrColumns[arrColumns == iD]), 'replaced by ',  newLabel, ' newLabelUpdated ', newLabelUpdated, ' numOfPoints ', numToReplace
-            arrColumns[arrColumns == iD] = newLabelUpdated
-            #print 'num of unique labels ', len(np.unique(arrColumns))
+        inertiaVariousK = []
+        f.write('testName\t' + testName + '\n') 
+
+        for name, est in estimators.items():
+            print 'start model ', name
+            f.write('model\t' + name + '\n') 
+            #est.fit(arrProfiles6Layers)
+            est.fit(dataToUse)
+            labels = est.labels_
+            print labels
+            labelsVariousK.append(labels)
+            # save the labels as a file
+            labelsFile = open(classification + 'labels_%s_%s_%s%s.txt' %(realPatientID, realSide, name, testName), 'w')
+            labelsFile.write('labels\t' + str(labels) + '\n')
+            labelsFile.close()
+            # TODO! write out other parameters of the estimator!
             
-        # colour all columns that have not been labeled as zero
-        arrColumns[arrColumns <= maxID] = 0        
-        print 'num of unique labels ', len(np.unique(arrColumns))
-        # save this new 'colouredVolume'        
-        aims.write(volColumns, classification + 'corticalColumns_labeled_%s_%s_%s%s.nii.gz' %(realPatientID, realSide, name, testName))        
-    
-    
-    print labelsVariousK
-    #print inertiaVariousK
-    #[401337.82453829556, 306421.28899320849, 268000.21592927747]
+            #inertia = est.inertia_
+            #inertiaVariousK.append(inertia)
+            
+            # take the initial volume with columns and colour it according to the labels
+            volColumns = aims.read(pathToColumnResults + '/column_regions/traverses_cortex_only_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))        
+            arrColumns = np.array(volColumns, copy = False)
+            maxID = np.max(arrColumns)
+            # compare the lengths
+            print len(labels), len(data)
+            print 'num of unique labels ', len(np.unique(arrColumns))
+            
+            # colour the initial columns volume into labels, and zero
+            # to avoid the same colours:
+            labelsUpdated = [((i + 1) * 10 + maxID) for i in labels]       
+            print zip(arrProfilesID6Layers, labels, labelsUpdated)
+            
+            for iD, newLabel, newLabelUpdated in zip(arrProfilesID6Layers, labels, labelsUpdated):
+                #numToReplace = len(np.where(arrColumns == iD)[0])
+                #print iD, len(arrColumns[arrColumns == iD]), 'replaced by ',  newLabel, ' newLabelUpdated ', newLabelUpdated, ' numOfPoints ', numToReplace
+                arrColumns[arrColumns == iD] = newLabelUpdated
+                #print 'num of unique labels ', len(np.unique(arrColumns))
+                
+            # colour all columns that have not been labeled as zero
+            arrColumns[arrColumns <= maxID] = 0        
+            print 'num of unique labels ', len(np.unique(arrColumns))
+            # save this new 'colouredVolume'        
+            aims.write(volColumns, classification + 'corticalColumns_labeled_%s_%s_%s%s.nii.gz' %(realPatientID, realSide, name, testName))        
+        
+        
+        print labelsVariousK
+        #print inertiaVariousK
+        #[401337.82453829556, 306421.28899320849, 268000.21592927747]
+        
+        
     f.close()
     
-    sys.exit()   
+    sys.exit(0)   
       
       
       
