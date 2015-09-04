@@ -22,6 +22,7 @@
 # economic rights, and the successive licensors have only limited
 # liability.
 #
+
 # In this respect, the user's attention is drawn to the risks associated
 # with loading, using, modifying and/or developing or reproducing the
 # software by the user in light of its specific status of scientific
@@ -71,6 +72,7 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import pairwise_distances
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
+from operator import add
 
 if __name__ == '__main__':
     
@@ -194,6 +196,36 @@ if __name__ == '__main__':
         print 'created classification = ', classification
     else:
         print 'existed classification = ', classification
+    healthyDir = directory.split(realPatientID)[0] + 'healthy/'
+    dyslexicDir = directory.split(realPatientID)[0] + 'dyslexic/'
+    if not os.path.exists(healthyDir):
+        os.makedirs(healthyDir)
+    if not os.path.exists(dyslexicDir):
+        os.makedirs(dyslexicDir)
+    healthyDir_NewHeat = directory.split(realPatientID)[0] + 'healthy_NewHeat/'
+    dyslexicDir_NewHeat = directory.split(realPatientID)[0] + 'dyslexic_NewHeat/'
+    if not os.path.exists(healthyDir_NewHeat):
+        os.makedirs(healthyDir_NewHeat)
+    if not os.path.exists(dyslexicDir_NewHeat):
+        os.makedirs(dyslexicDir_NewHeat)
+       
+    outerDir = ''
+    # decide - current subject is - so find the folder to write out files
+    if realPatientID in healthyList:
+        if heatCaluclation == 'new':        
+            outerDir = healthyDir_NewHeat
+        else:
+            outerDir = healthyDir
+    elif realPatientID in dyslexicList:
+        if heatCaluclation == 'new':
+            outerDir = dyslexicDir_NewHeat
+        else:
+            outerDir = dyslexicDir
+    
+    #new folder for avg ROI profiles for cortical layers
+    outerDirAvgProfCortLayers = outerDir + 'avgProfCortLayers/'
+    if not os.path.exists(outerDirAvgProfCortLayers):
+        os.makedirs(outerDirAvgProfCortLayers)
     
     #if options.threshold is None:
         #print >> sys.stderr, 'New: exit. no threshold given'
@@ -218,6 +250,89 @@ if __name__ == '__main__':
     f.write('pathToClassifNoBorders\t' + pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide) + '\n')
     f.write('pathToClassifWithBorders\t' + pathToColumnResults + '/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide) + '\n')
     f.write('pathToNobiasT2_new\t' + pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID) + '\n')    
+
+
+    #collect individual values for the separate layers. For all ROIs, for PT, for Heschl. To compare then variance between healthy/dyslexic subjects
+    #at140353_L_profiles2, at140353_L_profiles2_scaledNoOutlAddOutl_ROI_11, at140353_L_profiles2_scaledNoOutlAddOutl_ROI_21
+    allROIs = pathToColumnResults + '%s_%s_profiles2.txt' %(realPatientID, realSide)    
+    separateROIs = pathToColumnResults + '%s_%s_profiles2_scaledNoOutlAddOutl_ROI_*.txt' %(realPatientID, realSide)    
+    allROIsFiles = glob.glob(allROIs)
+    # check how many files there are. only if one -> no ambiguity
+    if len(allROIsFiles) != 1:
+        print 'abort the calculation, as too many or not a single allROIsFile was found'
+        f.write('abort the calculation, as ' + str(len(allROIsFiles)) + ' allROIsFile were found' + '\n')
+        f.close()
+        sys.exit(0)    
+        
+    allROIsFile = allROIsFiles[0]  
+    # find files for separate ROIs
+    separeteROIsFiles = glob.glob(separateROIs) # should be 11 and 21
+    # extract ROI names
+    roiNames = [(i.split('.txt')[0]).split('_ROI_')[1] for i in separeteROIsFiles]
+    allFiles = [allROIsFile]
+    allFiles.extend(separeteROIsFiles)
+    names = ['allROIs']
+    names.extend([('ROI_' + i) for i in roiNames])    
+    fig = plt.figure(figsize=(1 * 7, 6)) #, dpi=80, facecolor='w', edgecolor='k')
+    for fileROI, name, num in zip(allFiles, names, range(len(names))):
+        # read in the file
+        print 'read in the file ', fileROI
+        #/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/at140353/at140353_T1inT2_ColumnsCutNew20It_NewDB_NewHeat/at140353_L_profiles2_scaledNoOutlAddOutl_ROI_21.txt
+        currCoords, currValues  = np.loadtxt(fileROI, skiprows = 1, usecols = (1, 2), unpack=True)
+        print zip(currCoords[0:5], currValues[0:5])
+        means = []
+        stdvs = []
+        xCoords = []
+        
+        # extract individual layers, calculate mean, stdv, plot
+        for c in range(len(corticalIntervals) - 1):
+            start = corticalIntervals[c]
+            stop = corticalIntervals[c + 1]
+            # find all points where the depth coordinate is between these thresholds
+            thisLayerValues = currValues[np.where((currCoords >= start) & (currCoords < stop))]                
+            # save their means and stdvs
+            means.append(np.mean(thisLayerValues))
+            stdvs.append(np.std(thisLayerValues))
+            xCoords.append((start + stop) / 2.0)                        
+           
+        # collected the data for all layers. now plot for this particular ROI  
+        #plt.errorbar(xCoords, means, stdvs, linestyle='solid', marker='^', label = name)
+        # to plot it a bit shifted:
+        xCoords_new = [xxx + ((len(names)/2 - num))*0.005 for xxx in xCoords]
+        plt.errorbar(xCoords_new, means, stdvs, linestyle='solid', marker='^', label = name)
+
+        dataCort = open(pathToColumnResults + '%s_%s_CortLayersROI_%s.txt' %(realPatientID, realSide, name), "w")
+        dataCort.write('CorticalLayer\tAvgCoord\tMeanValue\tStdValue\n')            
+
+        for j in range(len(xCoords)):
+            dataCort.write(str(j + 1) + '\t' + str(xCoords[j]) + '\t' + str("%.4f" % means[j]) + '\t' + str("%.4f" % stdvs[j]) + '\n')    
+        dataCort.close()
+    
+    plt.title('Mean and stdv values in cortical layers in ROIs') 
+    plt.xlabel('Cortical depth') 
+    plt.ylabel('T2-nobias intensity')                 
+    plt.legend(loc='upper right', numpoints = 1)   
+    plt.savefig(pathToColumnResults + '%s_%s_cortLayersInROIs.png' %(realPatientID, realSide))
+    #save also to outer folder
+    plt.savefig(outerDirAvgProfCortLayers + '%s_%s_cortLayersInROIs.png' %(realPatientID, realSide))
+    plt.clf()
+    plt.close()
+    
+
+    # TODO: plot e.g. avg for PT for all healthy subjects on one plot. To compare their vaiance
+    
+
+
+
+
+
+
+
+    sys.exit(0)
+#################################################################################################################################################################
+################################################################ analyze individual cortical columns. Classify them #############################################
+#################################################################################################################################################################
+
 
     arr150 = arrT2[arrGWborders == 150]
     arr50 = arrT2[arrGWborders == 50]
@@ -245,8 +360,7 @@ if __name__ == '__main__':
         print 'abort the calculation, as too many or not a single column info file was found'
         f.write('abort the calculation, as ' + str(len(infoFileNames)) + ' column info files were found' + '\n')
         f.close()
-        sys.exit(0)
-    
+        sys.exit(0)    
 
     infoFileName = infoFileNames[0]    
     # extract the keyword
@@ -328,7 +442,9 @@ if __name__ == '__main__':
             stdvs.append(np.std(thisLayerValues))
             xCoords.append((start + stop) / 2.0)            
             #print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
-
+            # save the individual values
+            indValuesInLayers.append(thisLayerValues)
+            
         # collected the data for all layers. now plot for this particular column  
         axMeans.set_title('Mean and stdv values in cortical layers in maskROI %s' %(str(currID)))  
         axMeans.set_xlabel('Cortical depth') 
@@ -428,7 +544,16 @@ if __name__ == '__main__':
         plt.close()     
     
     print '*********************************************** complete = ', completeN, ', incomplete = ', incompleteN, ', complete5LayersN = ', complete5LayersN, ' from total of ', len(columnID)
+    # save these id-s of the columns
     f.write('arrProfilesID6Layers\t' + str(arrProfilesID6Layers) + '\n') 
+    arrProfilesID6LayersFile = open(classification + 'arrProfilesID6Layers_%s_%s.txt' %(realPatientID, realSide), 'w')
+    arrProfilesID6LayersFile.write('arrProfilesID6Layers\t' + str(arrProfilesID6Layers) + '\n')
+    arrProfilesID6LayersFile.close()
+    # save 5 layers largeIDs
+    arrProfilesID5LayersFile = open(classification + 'arrProfilesID5Layers_%s_%s.txt' %(realPatientID, realSide), 'w')
+    arrProfilesID5LayersFile.write('arrProfilesID5Layers\t' + str(arrProfilesID5Layers) + '\n')
+    arrProfilesID5LayersFile.close()    
+
     # save extracted feature vectors
     np.save(classification + 'arrFeatures6Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures6Layers)
     np.save(classification + 'arrFeatures5Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures5Layers)  
@@ -440,11 +565,13 @@ if __name__ == '__main__':
 
     # work with 5 or 6 layers?
     data = []
+    arrIDs = []
     if numOfLayersToUse == 6:
         data = arrFeatures6Layers
+        arrIDs = arrProfilesID6Layers
     elif numOfLayersToUse == 5:
         data = arrFeatures5Layers
-
+        arrIDs = arrProfilesID5Layers
     ############################ PCA, correlation analysis! cluster using these full feature vectors 
 
     #X = np.array([[-1, -1], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])
@@ -481,7 +608,6 @@ if __name__ == '__main__':
 
 
     # 1. Cluster the columns using vectors of their means and stdvs in the 6 'cortical layers'
- #   print (arrFeatures6Layers[0:10][:])   
     
     ## data generation
     #data = vstack((rand(150,2) + array([.5,.5]),rand(150,2)))
@@ -552,29 +678,12 @@ if __name__ == '__main__':
                   }
     
     # options!    
+     
     
-    ## 1. not scaled 
-    #testName = '_%d_featureVect' %(numOfLayersToUse)
-    #dataToUse = data
-    #print 'dataToUse ', dataToUse
-    
-    
-    
-    ##2. scaled data. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients
+    ##2. scaled data. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients    
     datasToUse = [data_scaled, data_PCA2_scaled]
     testNames = ['_dataScaled_%d_featureVect' %(numOfLayersToUse), '_dataPCA2Scaled_%d_featureVect' %(numOfLayersToUse)]
-    
-    
-    
-    #testName = '_dataScaled_%d_featureVect' %(numOfLayersToUse)
-    #dataToUse = data_scaled
-    #f.write('testName\t' + testName + '\n') 
-    
-    #2 - a. scaled data after PCA reduction. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients
-    #testName = '_dataPCA2Scaled_%d_featureVect' %(numOfLayersToUse)
-    #dataToUse = data_PCA2_scaled
-    #f.write('testName\t' + testName + '\n') 
-   
+      
     
     
 
@@ -618,29 +727,82 @@ if __name__ == '__main__':
             # colour the initial columns volume into labels, and zero
             # to avoid the same colours:
             labelsUpdated = [((i + 1) * 10 + maxID) for i in labels]       
-            print zip(arrProfilesID6Layers, labels, labelsUpdated)
+            #print zip(arrIDs, labels, labelsUpdated)
             
-            for iD, newLabel, newLabelUpdated in zip(arrProfilesID6Layers, labels, labelsUpdated):
+            
+            # TODO : write out average profiles for each of the found clusters
+            meanClusters = [[0 for x in range(numOfLayersToUse)] for x in range(est.n_clusters)]   # list of average profiles for columns belonging to a particular cluster
+            stdvClusters = [[0 for x in range(numOfLayersToUse)] for x in range(est.n_clusters)]
+            numColumnsInClusters = [0 for x in range(est.n_clusters)]
+            numOfColumnsProcessed = 0
+            
+            meanClustersIndProf = [[0 for x in range(numOfLayersToUse)] for x in range(est.n_clusters)]   # list of average profiles for columns belonging to a particular cluster
+            stdvClustersIndProf = [[0 for x in range(numOfLayersToUse)] for x in range(est.n_clusters)]
+            numProfilesInClustersIndProf = [0 for x in range(est.n_clusters)]
+            
+            for iD, newLabel, newLabelUpdated in zip(arrIDs, labels, labelsUpdated):
                 #numToReplace = len(np.where(arrColumns == iD)[0])
                 #print iD, len(arrColumns[arrColumns == iD]), 'replaced by ',  newLabel, ' newLabelUpdated ', newLabelUpdated, ' numOfPoints ', numToReplace
                 arrColumns[arrColumns == iD] = newLabelUpdated
                 #print 'num of unique labels ', len(np.unique(arrColumns))
+                
+                # add the mean of the particular profile to the cluster mean, according to the label
+                #print 'add to cluster ', newLabel, ' using ID ', iD, ' mean vector ', data[iD][0:numOfLayersToUse]
+                #print 'add to cluster ', newLabel
+                
+                # find this column iD in the list of columns: arrIDs
+                idInList = np.where(np.array(arrIDs) == iD)[0][0]   
+                #print ' using ID ', iD, ' itsiDinList is ', idInList
+                meanCurrProfile = data[idInList][0:numOfLayersToUse]
+                stdvCurrProfile = data[idInList][numOfLayersToUse:2*numOfLayersToUse]
+                
+                #print ' mean vector to add ', meanCurrProfile
+                numColumnsInClusters[newLabel] = numColumnsInClusters[newLabel] + 1
+                meanClusters[newLabel] = map(add, meanClusters[newLabel], meanCurrProfile)
+                stdvClusters[newLabel] = map(add, stdvClusters[newLabel],stdvCurrProfile)                
+                #print 'updated meanClusters is ' , meanClusters
+                numOfColumnsProcessed = numOfColumnsProcessed + 1
+                #print 'numOfColumnsProcessed ', numOfColumnsProcessed
+                
+                ## TODO: need it ?? now calculate other cluster mean: from individual profiles
+                #sumOfIndProfiles = 
+                #meanClustersIndProf[newLabel] = map(add, meanClustersIndProf[newLabel], sumOfIndProfiles)
+                
+                
+            meanClusters = [np.array(meanClusters)[xx]/numColumnsInClusters[xx] for xx in range(est.n_clusters)]
+            stdvClusters = [np.array(stdvClusters)[xx]/numColumnsInClusters[xx] for xx in range(est.n_clusters)]
+            # plot and save
+            for xx in range(est.n_clusters):
+                xCoords_new = [xxx + ((est.n_clusters/2 - xx))*0.005 for xxx in xCoords]
+                #plt.errorbar(xCoords, meanClusters[xx], stdvClusters[xx], linestyle='solid', marker='^') #, ecolor = 'r', color = 'r')
+                plt.errorbar(xCoords_new, meanClusters[xx], stdvClusters[xx], linestyle='solid', marker='^') # to shift points, to see the stdv
+                            
+            plt.title('Averages for clusters of average profile in cortical columns')   # subplot 211 title
+            plt.xlabel('Cortical depth')
+            plt.ylabel('T2-nobias intensity')
+            plt.savefig(classification + 'AvgInClusters_AvgProfiles_%s_%s_%s%s.png' %(realPatientID, realSide, name, testName))  
+            # save also to outer healthy/dyslexics folder
+            plt.savefig(outerDir + 'AvgInClusters_AvgProfiles_%s_%s_%s%s.png' %(realPatientID, realSide, name, testName))  
+            plt.clf()
+            plt.close()
                 
             # colour all columns that have not been labeled as zero
             arrColumns[arrColumns <= maxID] = 0        
             print 'num of unique labels ', len(np.unique(arrColumns))
             # save this new 'colouredVolume'        
             aims.write(volColumns, classification + 'corticalColumns_labeled_%s_%s_%s%s.nii.gz' %(realPatientID, realSide, name, testName))        
+            
+            
+            
         
-        
-        print labelsVariousK
+        #print labelsVariousK
         #print inertiaVariousK
         #[401337.82453829556, 306421.28899320849, 268000.21592927747]
         
         
     f.close()
     
-    sys.exit(0)   
+    #sys.exit(0)   
       
       
       
@@ -648,52 +810,52 @@ if __name__ == '__main__':
     ###################################################################################################
       
       
-    fignum = 1
-    for name, est in estimators.items():
-        fig = plt.figure(fignum, figsize=(4, 3))
-        plt.clf()
-        ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
+    #fignum = 1
+    #for name, est in estimators.items():
+        #fig = plt.figure(fignum, figsize=(4, 3))
+        #plt.clf()
+        #ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
 
-        plt.cla()
-        est.fit(X)
-        labels = est.labels_
+        #plt.cla()
+        #est.fit(X)
+        #labels = est.labels_
 
-        ax.scatter(X[:, 3], X[:, 0], X[:, 2], c=labels.astype(np.float))
+        #ax.scatter(X[:, 3], X[:, 0], X[:, 2], c=labels.astype(np.float))
 
-        ax.w_xaxis.set_ticklabels([])
-        ax.w_yaxis.set_ticklabels([])
-        ax.w_zaxis.set_ticklabels([])
-        ax.set_xlabel('Petal width')
-        ax.set_ylabel('Sepal length')
-        ax.set_zlabel('Petal length')
-        fignum = fignum + 1
+        #ax.w_xaxis.set_ticklabels([])
+        #ax.w_yaxis.set_ticklabels([])
+        #ax.w_zaxis.set_ticklabels([])
+        #ax.set_xlabel('Petal width')
+        #ax.set_ylabel('Sepal length')
+        #ax.set_zlabel('Petal length')
+        #fignum = fignum + 1
 
-    # Plot the ground truth
-    fig = plt.figure(fignum, figsize=(4, 3))
-    plt.clf()
-    ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
+    ## Plot the ground truth
+    #fig = plt.figure(fignum, figsize=(4, 3))
+    #plt.clf()
+    #ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
 
-    plt.cla()
+    #plt.cla()
 
-    for name, label in [('Setosa', 0),
-                        ('Versicolour', 1),
-                        ('Virginica', 2)]:
-        ax.text3D(X[y == label, 3].mean(),
-                X[y == label, 0].mean() + 1.5,
-                X[y == label, 2].mean(), name,
-                horizontalalignment='center',
-                bbox=dict(alpha=.5, edgecolor='w', facecolor='w'))
-    # Reorder the labels to have colors matching the cluster results
-    y = np.choose(y, [1, 2, 0]).astype(np.float)
-    ax.scatter(X[:, 3], X[:, 0], X[:, 2], c=y)
+    #for name, label in [('Setosa', 0),
+                        #('Versicolour', 1),
+                        #('Virginica', 2)]:
+        #ax.text3D(X[y == label, 3].mean(),
+                #X[y == label, 0].mean() + 1.5,
+                #X[y == label, 2].mean(), name,
+                #horizontalalignment='center',
+                #bbox=dict(alpha=.5, edgecolor='w', facecolor='w'))
+    ## Reorder the labels to have colors matching the cluster results
+    #y = np.choose(y, [1, 2, 0]).astype(np.float)
+    #ax.scatter(X[:, 3], X[:, 0], X[:, 2], c=y)
 
-    ax.w_xaxis.set_ticklabels([])
-    ax.w_yaxis.set_ticklabels([])
-    ax.w_zaxis.set_ticklabels([])
-    ax.set_xlabel('Petal width')
-    ax.set_ylabel('Sepal length')
-    ax.set_zlabel('Petal length')
-    plt.show()
+    #ax.w_xaxis.set_ticklabels([])
+    #ax.w_yaxis.set_ticklabels([])
+    #ax.w_zaxis.set_ticklabels([])
+    #ax.set_xlabel('Petal width')
+    #ax.set_ylabel('Sepal length')
+    #ax.set_zlabel('Petal length')
+    #plt.show()
 
 
 
