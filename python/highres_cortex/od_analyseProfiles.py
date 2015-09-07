@@ -252,6 +252,101 @@ if __name__ == '__main__':
     f.write('pathToNobiasT2_new\t' + pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID) + '\n')    
 
 
+
+
+
+
+
+
+    
+
+  ###############################################################################################
+    # TODO: plot e.g. avg for PT for all healthy subjects on one plot. To compare their vaiance
+    meanListOfLists = []
+    stdvListOfLists = []
+    namesListOfLists = []
+    fig = plt.figure(figsize=(3 * 7, 6 * 2))
+    # for the beginning do it for old heat, olny, only L hemisphere
+    # iterate for all ROIs, PT, Heschl
+    roiS = ['allROIs', 'ROI_11', 'ROI_21']
+    for j in range(len(roiS)):	
+	print '=============================== work with ROI  ' + roiS[j] + ' =================================='
+	ax = fig.add_subplot(2,3,(j + 1))
+	meanList = []
+	stdvList = []
+	namesList = []
+	for realPatientIDcurr in healthyList:
+	    # read in files and plot
+	    dirToRead = directory.split(realPatientID)[0] + realPatientIDcurr + '/'
+	    print dirToRead, '-----------------------------'
+	    filesToRead = glob.glob(dirToRead + '%s_T1inT2_ColumnsCutNew20It_NewDB/%s_%s_CortLayersROI_%s.txt' %(realPatientIDcurr, realPatientIDcurr, realSide, roiS[j]))
+	    print filesToRead		    #/volatile/od243208/neurospin/testBatchColumnsExtrProfiles_NewDB/ad140157/ad140157_T1inT2_ColumnsCutNew20It_NewDB/ad140157_L_CortLayersROI_ROI_11.txt
+	    
+	    # read in these files and collect the info
+	    if len(filesToRead) != 1:
+		print 'too much or no info'
+	    else:
+		currCoords, currMeans, currStdvs  = np.loadtxt(filesToRead[0], skiprows = 1, usecols = (1, 2, 3), unpack=True)
+		meanList.append(currMeans)
+		stdvList.append(currStdvs)
+		currName = realPatientIDcurr + '_' + roiS[j]
+		namesList.append(currName)
+		print 'plot the errorbar'
+		ax.errorbar(currCoords, currMeans, currStdvs, linestyle='solid', marker='^', label = currName)
+			
+	# collected the data on healthy subjects. plot on 1 plot
+	ax.set_title('Mean profiles for healthy subjects in ' + roiS[j])
+	ax.set_xlabel('Cortical depth') 
+	ax.set_ylabel('T2-nobias intensity')                 
+	ax.legend(loc='upper right', numpoints = 1)  
+
+	ax2 = fig.add_subplot(2,3,(j + 4))
+	meanList2 = []
+	stdvList2 = []
+	namesList2 = []
+	for realPatientIDcurr in dyslexicList:
+	    # read in files and plot
+	    dirToRead = directory.split(realPatientID)[0] + realPatientIDcurr + '/'
+	    print dirToRead, '-----------------------------'
+	    filesToRead = glob.glob(dirToRead + '%s_T1inT2_ColumnsCutNew20It_NewDB/%s_%s_CortLayersROI_%s.txt' %(realPatientIDcurr, realPatientIDcurr, realSide, roiS[j]))
+	    print filesToRead		    #/volatile/od243208/neurospin/testBatchColumnsExtrProfiles_NewDB/ad140157/ad140157_T1inT2_ColumnsCutNew20It_NewDB/ad140157_L_CortLayersROI_ROI_11.txt
+	    
+	    # read in these files and collect the info
+	    if len(filesToRead) != 1:
+		print 'too much or no info'
+	    else:
+		currCoords, currMeans, currStdvs  = np.loadtxt(filesToRead[0], skiprows = 1, usecols = (1, 2, 3), unpack=True)
+		meanList.append(currMeans)
+		stdvList.append(currStdvs)
+		currName = realPatientIDcurr + '_' + roiS[j]
+		namesList.append(currName)
+		print 'plot the errorbar'
+		ax2.errorbar(currCoords, currMeans, currStdvs, linestyle='solid', marker='^', label = currName)
+			
+	# collected the data on healthy subjects. plot on 1 plot
+	ax2.set_title('Mean profiles for dyslexic subjects in ' + roiS[j])
+	ax2.set_xlabel('Cortical depth') 
+	ax2.set_ylabel('T2-nobias intensity')                 
+	ax2.legend(loc='upper right', numpoints = 1)  
+	
+    plt.savefig(directory.split(realPatientID)[0] + 'healthyVsDyslexic_MeanStdv.png')
+    plt.clf()
+    plt.close()
+	    
+      
+    
+    sys.exit(0)
+
+
+
+
+
+
+
+
+
+
+
     #collect individual values for the separate layers. For all ROIs, for PT, for Heschl. To compare then variance between healthy/dyslexic subjects
     #at140353_L_profiles2, at140353_L_profiles2_scaledNoOutlAddOutl_ROI_11, at140353_L_profiles2_scaledNoOutlAddOutl_ROI_21
     allROIs = pathToColumnResults + '%s_%s_profiles2.txt' %(realPatientID, realSide)    
@@ -279,7 +374,7 @@ if __name__ == '__main__':
         print 'read in the file ', fileROI
         #/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/at140353/at140353_T1inT2_ColumnsCutNew20It_NewDB_NewHeat/at140353_L_profiles2_scaledNoOutlAddOutl_ROI_21.txt
         currCoords, currValues  = np.loadtxt(fileROI, skiprows = 1, usecols = (1, 2), unpack=True)
-        print zip(currCoords[0:5], currValues[0:5])
+        #print zip(currCoords[0:5], currValues[0:5])
         means = []
         stdvs = []
         xCoords = []
@@ -317,13 +412,6 @@ if __name__ == '__main__':
     plt.savefig(outerDirAvgProfCortLayers + '%s_%s_cortLayersInROIs.png' %(realPatientID, realSide))
     plt.clf()
     plt.close()
-    
-
-    # TODO: plot e.g. avg for PT for all healthy subjects on one plot. To compare their vaiance
-    
-
-
-
 
 
 
