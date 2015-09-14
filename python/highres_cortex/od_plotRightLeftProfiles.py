@@ -188,9 +188,6 @@ if __name__ == '__main__':
     print 'found ', numOfCommonRLregions, ' numOfCommonRLregions '       
             
        
-       
-    #sys.exit(0) ################################################################################################################################
-
     # for better comparison: plot the same plots but given max min scaled intensity ranges (-6, 10)
 
 

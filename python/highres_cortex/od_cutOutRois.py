@@ -40,33 +40,6 @@ import numpy as np
 from soma import aims, aimsalgo
 import subprocess
 
-
-def projectTextureOnMesh(tex, hemi):
-    """ This function takes a mesh and a texture, then projects the texture on the mesh
-    """
-    vs = vol.getVoxelSize()[:3]
-    dims = vol.getSize()
-    c = aims.Converter(intype=vol, outtype=aims.Volume('S16'))
-    volShort = c(vol)
-
-    # Had problem with some textures: instead of value '10', it was '9.9999999999'. -> use round
-    for i, vertex in enumerate(hemi.vertex()):
-        label = round(tex[0].item(i)) + 1
-        posVox = (int(round(vertex[0] / vs[0])), int(round(vertex[1] / vs[1])), int(round(vertex[2] / vs[2])))
-        # print posVox
-        if posVox[0] >= 0 and posVox[0] < dims[0] and posVox[1] >= 0 and posVox[1] < dims[1] and posVox[2] >= 0 and posVox[2] < dims[2]:
-            volGW_dilated.setValue(label, posVox[0], posVox[1], posVox[2])
-            
-    return()
-
-            
- 
- 
- 
- 
- 
- 
-
 def voronoiFromTexture(volGW_border, tex, hemi, stopLabel, directory, keyWord):
     """ This function takes a volume from which ROI will be cut out
     This volume should be read in with the border = 1 (for later dilation)
@@ -98,7 +71,7 @@ def voronoiFromTexture(volGW_border, tex, hemi, stopLabel, directory, keyWord):
     # Voronoi classification
     subprocess.call(['AimsVoronoi', '-i', directory + 'seedsNoWM_%s.nii.gz' %(keyWord), '-o', directory +  'voronoi_%s.nii.gz' %(keyWord), '-d', '32767', '-f', str(stopLabel)]) 
     volVoronoi = aims.read(directory +  'voronoi_%s.nii.gz' %(keyWord))
-    aims.write(volVoronoi, directory +  'outputFromVoronoi_%s.nii.gz' %(keyWord))   #TODO! delete it later!
+    aims.write(volVoronoi, directory +  'outputFromVoronoi_%s.nii.gz' %(keyWord))  
     
     # label '0' in texture was transformed into '1'. So we will set all voxels with value '1' to '0'
     arrVor = np.array(volVoronoi, copy = False)

@@ -42,7 +42,7 @@
 
 
 # example how to run this file:
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotHealthy_DyslexicProfiles.py -c 5 -t 314 -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_plotHealthy_DyslexicProfiles.py -c 5 -t 314 -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/
 import random
 from soma import aims, aimsalgo
 import subprocess
@@ -217,7 +217,7 @@ if __name__ == '__main__':
     #plt.legend(loc='upper right', numpoints = 1)
     #plt.savefig(directory + '%s_LvsR_2nobiasT2.png' %(realPatientID))    
     
-    ## TODO: delete later if no need: save profiles also to the outer folder!
+    ## save profiles also to the outer folder!
     ##plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2.png' %(realPatientID))    
     #plt.clf()
     #plt.close()
@@ -262,7 +262,7 @@ if __name__ == '__main__':
             #plt.legend(loc='upper right', numpoints = 1)
             #plt.savefig(directory + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))   
             
-            ## TODO: delete later if no need: save profiles also to the outer folder!
+            ## save profiles also to the outer folder!
             ##plt.savefig('/neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/' + '%s_LvsR_2nobiasT2_ROI_%s.png' %(realPatientID, iD))    
             #plt.clf()
             #plt.close() 

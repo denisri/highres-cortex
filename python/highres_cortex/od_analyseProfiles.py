@@ -163,8 +163,6 @@ if __name__ == '__main__':
     if options.workOnLaptop is not None:
 	workOnLaptop = options.workOnLaptop      
 	# if true, then processes are run on the laptop. Change locations of neurospin DBs
-	# TODO! check! which one to use!
-	#directory = directory.replace('/neurospin/lnao/', '/nfs/neurospin/lnao/')        
 	directory = directory.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')  
         pathToNobiasT2_newCroppedDB = pathToNobiasT2_newCroppedDB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')
         pathToNew_T1inT2DB = pathToNew_T1inT2DB.replace('/neurospin/lnao/dysbrain/', '/volatile/od243208/neurospin/')	
@@ -233,7 +231,7 @@ if __name__ == '__main__':
     #else:
         #threshold = options.threshold  
         
-    # TODO: for test. maybe delete it later
+    ################# for test. maybe delete it later #########################################################################
     # plot histograms for the intensities in CSF, cortex and WM
     pathToClassifNoBorders = pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide)
     volGWNoborders = aims.read(pathToClassifNoBorders)
@@ -250,28 +248,23 @@ if __name__ == '__main__':
     f.write('pathToClassifNoBorders\t' + pathToColumnResults + 'GWsegm_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide) + '\n')
     f.write('pathToClassifWithBorders\t' + pathToColumnResults + '/dist/classif_with_outer_boundaries_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide) + '\n')
     f.write('pathToNobiasT2_new\t' + pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID) + '\n')    
-
-
-
-
-
-
-
+    ###########################################################################################################################
 
     
 
-  ###############################################################################################
-    # TODO: plot e.g. avg for PT for all healthy subjects on one plot. To compare their vaiance
+    ###########################################################################################################################
+    # plot e.g. avg for PT for all healthy subjects on one plot. To compare their vaiance
     meanListOfLists = []
     stdvListOfLists = []
     namesListOfLists = []
-    fig = plt.figure(figsize=(3 * 7, 6 * 2))
+    fig = plt.figure(figsize=(3 * 7, 6 * 3))
     # for the beginning do it for old heat, olny, only L hemisphere
     # iterate for all ROIs, PT, Heschl
     roiS = ['allROIs', 'ROI_11', 'ROI_21']
     for j in range(len(roiS)):	
 	print '=============================== work with ROI  ' + roiS[j] + ' =================================='
-	ax = fig.add_subplot(2,3,(j + 1))
+	ax = fig.add_subplot(3,3,(j + 1))
+	axBoth = fig.add_subplot(3,3,(j + 7))
 	meanList = []
 	stdvList = []
 	namesList = []
@@ -293,6 +286,7 @@ if __name__ == '__main__':
 		namesList.append(currName)
 		print 'plot the errorbar'
 		ax.errorbar(currCoords, currMeans, currStdvs, linestyle='solid', marker='^', label = currName)
+		axBoth.errorbar(currCoords, currMeans, currStdvs, linestyle='solid', color = 'b', ecolor = 'b', marker='^')#, label = 'healthy')
 			
 	# collected the data on healthy subjects. plot on 1 plot
 	ax.set_title('Mean profiles for healthy subjects in ' + roiS[j])
@@ -300,7 +294,7 @@ if __name__ == '__main__':
 	ax.set_ylabel('T2-nobias intensity')                 
 	ax.legend(loc='upper right', numpoints = 1)  
 
-	ax2 = fig.add_subplot(2,3,(j + 4))
+	ax2 = fig.add_subplot(3,3,(j + 4))
 	meanList2 = []
 	stdvList2 = []
 	namesList2 = []
@@ -322,14 +316,20 @@ if __name__ == '__main__':
 		namesList.append(currName)
 		print 'plot the errorbar'
 		ax2.errorbar(currCoords, currMeans, currStdvs, linestyle='solid', marker='^', label = currName)
-			
+                axBoth.errorbar(currCoords, currMeans, currStdvs, linestyle='solid', color = 'r', ecolor = 'r', marker='^')#, label = 'dyslexic')
+
 	# collected the data on healthy subjects. plot on 1 plot
 	ax2.set_title('Mean profiles for dyslexic subjects in ' + roiS[j])
 	ax2.set_xlabel('Cortical depth') 
 	ax2.set_ylabel('T2-nobias intensity')                 
 	ax2.legend(loc='upper right', numpoints = 1)  
 	
-    plt.savefig(directory.split(realPatientID)[0] + 'healthyVsDyslexic_MeanStdv.png')
+	axBoth.set_title('Mean profiles for healthy and dyslexic subjects in ' + roiS[j])
+        axBoth.set_xlabel('Cortical depth') 
+        axBoth.set_ylabel('T2-nobias intensity')                 
+        #axBoth.legend(loc='upper right', numpoints = 1)  
+	
+    plt.savefig(directory.split(realPatientID)[0] + 'healthyVsDyslexicRed_%s_%sHeat_MeanStdv_.png' %(realSide, heatCaluclation))
     plt.clf()
     plt.close()
 	    

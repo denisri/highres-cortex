@@ -47,10 +47,10 @@
 
 # example how to run this file:
 # with cortical columns
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/ -c 3
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/ad140157/ -c 3
 
 # or without cortical columns
-#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/
+#python /volatile/od243208/brainvisa_sources/highres-cortex/python/highres_cortex/od_extractProfiles.py -p ad140157 -s R -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/ad140157/
 
 import random
 from soma import aims, aimsalgo
@@ -87,8 +87,7 @@ def extractProfiles(volCoord, volValue, volMask = None):
         arrValue1 = arrValue[mask != 0]        
             
         # scale the volume of values
-        # TODO! before all this: ensure to work on zero-free data!!!!!!!!!!!!!!!
-        # important! need to transform them to float before!!!
+        # ensure to work on zero-free data, need to transform them to float before!!!
         strMeansInfo = 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
         print 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
         arrValue1 = arrValue1.astype('float')
@@ -96,7 +95,7 @@ def extractProfiles(volCoord, volValue, volMask = None):
         strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
         print '-----------------------------------------', strMeansInfo        
             
-        # TODO! before scaling: eliminate 'outliers'
+        # before scaling: eliminate 'outliers'
         # consider values lower than 1st percentile and greater than 99th percentile: outliers!
         # exclude them and perform scaling without them
         percentile1 = np.percentile(arrValue1, 1)
@@ -159,7 +158,7 @@ def extractProfiles(volCoord, volValue, volMask = None):
                 #arrCoord1i = arrCoord[mask == i]
                 #arrValue1i = arrValue[mask == i]
                 
-                #new version - need the scaled data! TODO: check!
+                #new version - need the scaled data
                 arrCoord[mask != 0] = arrCoord1
                 arrValue[mask != 0] = arrValue1  
                 
@@ -200,7 +199,6 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
     """
     #print volCoord.header()
     
-    #TODO: check if this is correct. Attention: modifying the original data!!
     #arrColouredVol = np.array(volColumns, copy = True)
     #print 'len(arrColouredVol)= ', len(arrColouredVol)
     #arrColouredVol1 = arrColouredVol[mask != 0]
@@ -261,8 +259,8 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         
         
         
-        # TODO! before all this: ensure to work on zero-free data!!!!!!!!!!!!!!!
-        # TODO! scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
+        # ensure to work on zero-free data!!!!!!!!!!!!!!!
+        # scale the values! due to different acquisition settings, can not compare profiles among subjects! -> need to scale
         # important! need to transform them to float before!!!
         strMeansInfo = 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
         print 'Min, Mean, SD, Median, Max of unscaled T2 data: \n'
@@ -270,7 +268,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
         strMeansInfo = strMeansInfo + str(np.min(arrValue1)) + '\t' + str(np.mean(arrValue1)) + '\t' + str(np.std(arrValue1)) + '\t' + str(np.median(arrValue1)) + '\t' + str(np.max(arrValue1)) + '\n'
         print '-----------------------------------------', strMeansInfo
         
-        # TODO! before scaling: eliminate 'outliers'
+        # before scaling: eliminate 'outliers'
         # consider values lower than 1st percentile and greater than 99th percentile: outliers!
         # exclude them and perform scaling without them
         percentile1 = np.percentile(arrValue1, 1)
@@ -358,7 +356,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
 
         for i in roiIds:
             #print 'roi ', i, len(arrCoord), len(roiColumns)
-            # TODO! check if this is OK: I take the whole column even if only 1 voxel is inside the voronoiCorr. Cut it?
+            # we take the whole column even if only 1 voxel is inside the voronoiCorr. Cut it?
             arrCoord1i = arrCoord1[roiColumns == i]
             arrValue1i = arrValue1[roiColumns == i]  
             arrDivGradn1i = arrDivGradn1[roiColumns == i]  
@@ -378,7 +376,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
             listOfAvgDivGradn.append(avgDiv)
             
             
-            # TODO! get AVG X, Y coordinates per column (might use it for clustering)
+            # get AVG X, Y coordinates per column (might use it for clustering)
             #coordsThisROI = np.where(arrCoord1i != 0)
             coordsThisROI = np.where(arrColumns == i)   # coordinates in 'voxels'. need to transform into mm!
             #print 'coordsThisROI[:] = ', coordsThisROI[:]
@@ -391,9 +389,8 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
             #print 'ROI ', i, meanROIVoxelCoords, ' size = ', len(xCoords)
             listOfSeparateAVGCoords.append(meanROIVoxelCoords)
 
-            #sys.exit()
                    
-            # TODO: delete it later!!! colour the initial image into 3 colours:
+            # colour the initial image into 3 colours:
             # if avg < - 0.1 blue ,  if 0.1 >= avg >= - 0.1 yellow,   if avg > 0.1 red     
             #print 'len(arrColouredVol) = ', len(arrColouredVol), len(arrValue), len(arrValue1), len(arrValue1i), 'len(arrColouredVol1) = ', len(arrColouredVol1), ' len(roiColumns)= ', len(roiColumns), ' i= ', i
             
@@ -443,7 +440,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
             print 'for mask ROI ', roisMask[j], ' the column IDs are ', len(listOfROIsInMask[j]), ' a list: ', str(listOfROIsInMask[j])
             
         # check which columns are in both ROIs
-        # TODO!! decide what to do with these ROIs?? NOW - ignore them - 
+        # decide what to do with these ROIs?? NOW - ignore them - 
         for i in range(len(roiIds)):
             # TODO! change it! need to ignore a column if it is present in any 2 mask ROIs, not necessarily 1st and 2nd
             if roiIds[i] != 0:                  #and roiIds[i] in listOfROIsInMask[0] and roiIds[i] in listOfROIsInMask[1]:
@@ -460,7 +457,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
                         numbers.append(len(w))                
                     print 'Column with ID ', roiIds[i], ' is in both regions. % in mask ROIs ', ' is ', numbers
                     
-                    # analyze these numbers! TODO: Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
+                    # analyze these numbers! Denis : leave it like this!! eliminate columns that are in both ROIs!!! as Voronoi can also contain errors!
                     # if one of the rois contains 10 times more voxels than all the rest ROIs, than we can accept this column and say that it belongs to this roi
                     # e.g. if column has 1200 voxels in ROI 11 and 13 voxels in ROI 21  - should it be dismissed??
                     
@@ -491,7 +488,7 @@ def extractProfilesInColumns(volCoord, volValue, volColumns, volDivGradn, divGrT
                 
             
         
-    #else :   TODO!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #else :   TODO
         #coords = arrCoord[arrCoord != 0]
         #values = arrValue[arrCoord != 0]
         
@@ -710,8 +707,6 @@ if __name__ == '__main__':
     
     pathToCoord = pathToColumnResults + 'isovolume/'
     volsCoord = glob.glob(pathToCoord + 'pial-volume-fraction_%s_%s_cut_noSulci_extended.nii.gz' %(realPatientID, realSide))
-    #volValue = aims.read(pathToNobiasT2 + '%s_NewNobiasT2_cropped.nii.gz' %(realPatientID))
-    #volValue2 = aims.read(pathToNobiasT2_new + '%s_NewT2_cropped.nii.gz' %(realPatientID))
     volValue2 = aims.read(pathToNobiasT2_newCroppedDB + '%s/t1mri/t2_resamp/%s.nii.gz' %(realPatientID, realPatientID))
     arrValue = np.array(volValue2, copy = False)
     volsMask = glob.glob(pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci.nii.gz' %(realPatientID, realSide))
@@ -743,7 +738,6 @@ if __name__ == '__main__':
     print 'volFullGW = ', volFullGW
     maskGWFull = np.array(aims.read(volFullGW), copy = False)# also compare to all data available in T2, not only ROIs
     
-    ################ TODO ! ########  repeat this analysis for the new subjects!!!!!!!!!!!!!!!! #######################################################
     ## test how many zeros in the data         
     
     print '1. computeRanges(arrValue, fT2intensInfo, cortexROIs)'
@@ -766,7 +760,6 @@ if __name__ == '__main__':
          
         # save the new volMask
         aims.write(volMask, pathToColumnResults + 'voronoiCorr_%s_%s_cut_noSulci_insideNonZeroT2.nii.gz' %(realPatientID, realSide))
-    #sys.exit(0)
     ###################################################################################################################################################        
     # study T2 intensities for data cleaning  
     arrValue1WM = arrValue[maskGW == 200] # get values in the WM
@@ -903,7 +896,6 @@ if __name__ == '__main__':
         print '******************* no columns diameter was given, then extract profiles in the mask ***************************'    
         result2 = extractProfiles(volCoord, volValue2, volMask)              
         addedColumnsDiamName = '_scaledNoOutlAddOutl'        
-        ## TODO! for test!!
         #if len(limitsAllowed) != 0:      
             #addedColumnsDiamName = '_scaledNoOutlAddOutl_nonZeroT2'    
   
@@ -1079,7 +1071,6 @@ if __name__ == '__main__':
                 data2i.write(str(j) + '\t' + str(currCoords[j]) + '\t' + str(currValues[j]) + '\n')    
             data2i.close()              
             
-        # TODO! what is it??    
         plt.clf()
         plt.close()     
 
@@ -1175,7 +1166,6 @@ if __name__ == '__main__':
             plt.xlabel('Cortical depth')
             plt.ylabel('T2-nobias intensity')
             plt.plot(listsOfCoordsForLargeColumns[j], listsOfValuesForLargeColumns[j], '.', c = 'r')
-            # TODO!!! this plot is not plotted!! ???
             plt.clf()
             plt.close()    
             
@@ -1417,11 +1407,8 @@ if __name__ == '__main__':
                         for z in range(len(listsOfCoordsForMaskVariousThrADG[j][t])):
                             s = str(listsOfColumnIDsForMaskVariousThrADG[j][t][z]) + '\t' + str(listsOfCoordsForMaskVariousThrADG[j][t][z]) + '\t' + str(listsOfValuesForMaskVariousThrADG[j][t][z]) + '\n'                   
                             f.write(s)        
-                        f.close()
-                        #TODO: need to write out profiles of columns with too low or too high AvgDivGradn??
+                        f.close()                        
                         
-                        
-                # TODO : delete it. only for verification
                 # check if this particular cortical column's AvgDivGradn Value is between the thresholds, the plot it to the second row of the figure
                 if len(listsOfColumnIDsForMaskVariousThrADG[j][t]) != 0:  
                     uniqueCols = np.unique(listsOfColumnIDsForMaskVariousThrADG[j][t])

@@ -43,10 +43,10 @@
 
 # similar to od_mainCorticalColumns.py,, only adapted to the new databases!!!!!
 # how to run this file
-#/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r
+#/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r
 
 # when working on a laptop
-#/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r -l
+#/volatile/od243208/brainvisa_sources/highres-cortex/bin/od_mainCorticalColumns_newDB.py -p fg140290 -s L -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB/ -e -r -l
 
 
 from soma import aims, aimsalgo
@@ -543,7 +543,7 @@ t1heat = timeit.default_timer()
 
 
 # example of how to run only the heat step with the new version:
-#time /volatile/od243208/brainvisa_sources/highres-cortex/bin/od_heatMain_NEW.py -i /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/GWsegm_fg140290_L_cut_noSulci_extended.nii.gz -r -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/ -k fg140290_L_cut_noSulci_extended
+#time /volatile/od243208/brainvisa_sources/highres-cortex/bin/od_heatMain_NEW.py -i /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/GWsegm_fg140290_L_cut_noSulci_extended.nii.gz -r -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles_NewDB/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/ -k fg140290_L_cut_noSulci_extended
 
 
 ## launch the isovolumes calculation # classif file must be here with 100, 200, 0  (no 50 and 150)
