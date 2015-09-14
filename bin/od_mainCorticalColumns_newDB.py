@@ -38,18 +38,8 @@
 
 
 # an example how to run this script
-#od_mainCorticalColumns.py -p ad140157 -c -d /volatile/od243208/brainvisa_manual/ad140157_cut_T1inT2_Columns/ -r
-
-# od_mainCorticalColumns.py -p ml140175 -s L -c True -i /volatile/od243208/brainvisa_db_morphologist/dysbrain/ml140175/t1mri/reversed_t1map_2/default_analysis/segmentation/Lgw_interface_ml140175.nii.gz -d /volatile/od243208/brainvisa_manual/ml140175_test/
-
 # this is the main script to run on a classified GW volume
 # it launches scripts by Yann Leprince: dist, heat, isovolume, column-regions to compute 'cortical columns'
-
-# od_mainCorticalColumns.py -p ad140157 -s R -c -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/ad140157/ad140157_T1inT2_ColumnsCutNew20It/ -e -r
-# od_mainCorticalColumns.py -p md140208 -s L -d /volatile/od243208/brainvisa_manual/md140208_T1inT2_ColumnsNew/ -e -r
-
-
-
 
 # similar to od_mainCorticalColumns.py,, only adapted to the new databases!!!!!
 # how to run this file
@@ -140,8 +130,6 @@ if options.realSide is not None:
 if options.workOnT1inT2Space is not None:
     workOnT1inT2Space = options.workOnT1inT2Space      
     # if true, then processes are run on (T1 resampled in T2 space). Change locations of neurospin DBs
-    #brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_highresLinearCropped10/dysbrain/'   
-    ########################################  TODO ! check! ##########################################################
     brainvisa_db_neurospin = '/neurospin/lnao/dysbrain/brainvisa_db_T1_in_T2_space/dysbrain/'   
     numberOfIt = 20   # number of iterations to extend (dilate) the selected regions
     # for high resolution images increased the number of iterations! for better avoidance of border effects
@@ -159,8 +147,6 @@ if options.workOnLaptop is not None:
     #pathToTextures = '/volatile/od243208/neurospin/lnao/dysbrain/randomized_flipped_data/manual_work/'
 
 if options.pathToClassifFile is None:   # take the 'standard file'
-    #pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/reversed_t1map_2/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID) 
-    # changed for the new DB: 
     pathToClassifFile = brainvisa_db_neurospin + realPatientID + '/t1mri/t1m_resamp/default_analysis/segmentation/%sgrey_white_%s.nii.gz' %(realSide, realPatientID)        
     print 'Took the standard classification file: ', pathToClassifFile
 else:
@@ -274,22 +260,12 @@ if cutOut is True:
     #fileHemi = pathToTrm + 'Hemi/%s_hemi_%s_T1inNewT2_cropped.gii' %(realPatientID, realSide)
     fileHemi = pathToTrm + '%s/%s_hemi_%s_T1inNewT2.gii' %(realPatientID, realPatientID, realSide)    
     print 'found the hemisphere file : ', fileHemi
-    volHemi = aims.read(fileHemi)
-    
-        
-    
-    #################### old : problem!!! Texture is still in the "old space". Need to transform it to the new space
-    # read in the transformation file (from T1 into T2 space)
-   # pathTot1_to_t2 = pathToTrm + realPatientID + '/%s_t1_to_t2.trm' % (realPatientID)
-  #  transfT1toT2 = aims.read(pathTot1_to_t2)
-    ###################### todo!!!!!!!!!!!!!!
-
-    
+    volHemi = aims.read(fileHemi)    
     
     # perform the Voronoi classification in the given GW segmentation volume using the seeds from the texture    
     #print volGWBorder.header()
     print '######################### start Voronoi #################################'
-    aims.write(volGWBorder, data_directory + 'givenToVoronoi_%s.nii.gz' %(keyWord))  # TODO: delete it later
+    aims.write(volGWBorder, data_directory + 'givenToVoronoi_%s.nii.gz' %(keyWord))  
     volVoronoi = highres_cortex.od_cutOutRois.voronoiFromTexture(volGWBorder, texture, volHemi, 0, data_directory, keyWord)
     # created the Voronoi classification that was  'cleaned' from the 'zero' value from texture
     
@@ -299,8 +275,6 @@ if cutOut is True:
     pathToClassifFile = data_directory + 'GWsegm_%s.nii.gz' %(keyWord)
     aims.write(volGWCut, pathToClassifFile)
     
-    ################# ok till here for the new DB ####################
-
 ############################# 2. eliminate sulci skeletons if requested . update the keyWord #################################
 print 'eliminateSulci is ', eliminateSulci, 'type(eliminateSulci) is ', type(eliminateSulci)
 if eliminateSulci is True:
@@ -556,7 +530,6 @@ t1dist = timeit.default_timer()
 t0heat = timeit.default_timer()
 
 # launch this process for images in initial T1 space:
-# TODO! test the new Yann's script!!!
 if options.workOnT1inT2Space is not None:    
     print 'start heat calculation for images in T2 space resampled from T1'
     commands = commands + heatMainScript + ' \n' + 'time ' + heatMainScript + ' -i '+ pathToClassifFile+ ' -r '+ '-d '+ data_directory+ ' -k '+ keyWord + '\n'
@@ -568,8 +541,6 @@ else:
 
 t1heat = timeit.default_timer()
 
-# TODO! delete after test!
-#sys.exit(0)
 
 # example of how to run only the heat step with the new version:
 #time /volatile/od243208/brainvisa_sources/highres-cortex/bin/od_heatMain_NEW.py -i /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/GWsegm_fg140290_L_cut_noSulci_extended.nii.gz -r -d /neurospin/lnao/dysbrain/testBatchColumnsExtrProfiles/fg140290/fg140290_T1inT2_ColumnsCutNew20It_newDB_testNEW/ -k fg140290_L_cut_noSulci_extended
