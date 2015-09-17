@@ -335,7 +335,7 @@ if __name__ == '__main__':
 	    
       
     
-    sys.exit(0)
+    #sys.exit(0)
 
 
 
@@ -416,7 +416,7 @@ if __name__ == '__main__':
 
 
 
-    sys.exit(0)
+    #sys.exit(0)
 #################################################################################################################################################################
 ################################################################ analyze individual cortical columns. Classify them #############################################
 #################################################################################################################################################################
@@ -479,11 +479,13 @@ if __name__ == '__main__':
     arrProfilesID6Layers = []
     arrVar6Layers = []
     arrFeatures6Layers = []
+    arrFeatures6Layers_noCoord = []
     
     arrProfiles5Layers = []
     arrProfilesID5Layers = []
     arrVar5Layers = []
     arrFeatures5Layers = []
+    arrFeatures5Layers_noCoord = []
     
     for i in range(len(largeIDs)):
         # iterate through these profiles, calculate means, stdv in layers, plot figures, save files
@@ -531,7 +533,7 @@ if __name__ == '__main__':
             xCoords.append((start + stop) / 2.0)            
             #print ' cortLayer = ', c, ' len(thisLayerValues)=  ', len(thisLayerValues), ' complete5Layers= ',  complete5Layers, ' complete = ', complete
             # save the individual values
-            indValuesInLayers.append(thisLayerValues)
+            #indValuesInLayers.append(thisLayerValues)
             
         # collected the data for all layers. now plot for this particular column  
         axMeans.set_title('Mean and stdv values in cortical layers in maskROI %s' %(str(currID)))  
@@ -564,7 +566,12 @@ if __name__ == '__main__':
             # create 'full' feature vectors, including profiles, avg coordinates of columns, sizes, avgDivGrads.... for 6 layers
             currFeatureVector = []
             currFeatureVector.extend(means)
-            currFeatureVector.extend(stdvs)     
+            currFeatureVector.extend(stdvs)    
+            # same info but ONLY with profile info!!! (no coordinates, no size, no AvgDivGradn)
+            currFeatureVector_noCoord = []
+            currFeatureVector_noCoord.extend(means)
+            currFeatureVector_noCoord.extend(stdvs)
+            
             # find the info on this column in the columnInfo file. Line numbers are different!!
             infoFileID = np.where(columnID == currID)[0]
             #print 'size ', size, 'type ', type(size)
@@ -575,6 +582,7 @@ if __name__ == '__main__':
             #print 'currRealROIid ', currID, ' line number in columnInfofile', infoFileID, ' columnId from infoFile ', columnID[infoFileID], ' wrong Id ', columnID[i]  
             currFeatureVector.extend(featuresFromInfoFile)      # avg column coordinates in VOXELS!!! # TODO? need to transform into mm ?? maybe not, as we do scaling
             arrFeatures6Layers.append(currFeatureVector)
+            arrFeatures6Layers_noCoord.append(currFeatureVector_noCoord)
             
             # add the infor from this profile to the data for 5 layers
             arrProfilesID5Layers.append(currID)
@@ -586,7 +594,12 @@ if __name__ == '__main__':
             currFeatureVector5.extend(means[1:])
             currFeatureVector5.extend(stdvs[1:])
             currFeatureVector5.extend(featuresFromInfoFile)     # avg column coordinates in VOXELS!!! # TODO? need to transform into mm ?? maybe not, as we do scaling
-            arrFeatures5Layers.append(currFeatureVector5)            
+            arrFeatures5Layers.append(currFeatureVector5)           
+            # same info but ONLY with profile info!!! (no coordinates, no size, no AvgDivGradn)
+            currFeatureVector5_noCoord = []
+            currFeatureVector5_noCoord.extend(means[1:])
+            currFeatureVector5_noCoord.extend(stdvs[1:])
+            arrFeatures5Layers_noCoord.append(currFeatureVector5_noCoord)          
         else :
             # now check, whether this profile is complete for 5 layers (II - VI)
             if complete5Layers == False:
@@ -645,6 +658,9 @@ if __name__ == '__main__':
     # save extracted feature vectors
     np.save(classification + 'arrFeatures6Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures6Layers)
     np.save(classification + 'arrFeatures5Layers_%s_%s.npy' %(realPatientID, realSide), arrFeatures5Layers)  
+    # save info with VectorOnly info
+    np.save(classification + 'arrFeatures6Layers_noCoord_%s_%s.npy' %(realPatientID, realSide), arrFeatures6Layers_noCoord)
+    np.save(classification + 'arrFeatures5Layers_noCoord_%s_%s.npy' %(realPatientID, realSide), arrFeatures5Layers_noCoord)  
     #print arrFeatures6Layers
 
 #################################################################################################################################################################
@@ -653,12 +669,15 @@ if __name__ == '__main__':
 
     # work with 5 or 6 layers?
     data = []
+    data_noCoord = []
     arrIDs = []
     if numOfLayersToUse == 6:
         data = arrFeatures6Layers
+        data_noCoord = arrFeatures6Layers_noCoord
         arrIDs = arrProfilesID6Layers
     elif numOfLayersToUse == 5:
         data = arrFeatures5Layers
+        data_noCoord = arrFeatures5Layers_noCoord
         arrIDs = arrProfilesID5Layers
     ############################ PCA, correlation analysis! cluster using these full feature vectors 
 
@@ -716,13 +735,12 @@ if __name__ == '__main__':
 
 
     
-    # data scaling TODO!
+    # data scaling 
     data_scaled = preprocessing.scale(data)
     data_PCA2_scaled = preprocessing.scale(data_PCA2)
+    data_noCoord_scaled = preprocessing.scale(data_noCoord)
     #print zip(data, data_scaled)    
-    
-    # TODO! try data normalization?
-    
+        
     
     ## computing K-Means with K = 2 (2 clusters)
     #centroids,_ = kmeans(data, 2)
@@ -756,22 +774,25 @@ if __name__ == '__main__':
                 #'k_means_iris_bad_init': KMeans(n_clusters=3, n_init=1,
                                                 #init='random')}
     estimators = {
-		  'k_means_2': KMeans(n_clusters = 2),
-                  'k_means_3': KMeans(n_clusters = 3),
-                  'k_means_4': KMeans(n_clusters = 4)
-                  #'agglomerative_2_eucl_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "euclidean"),
-                  #'agglomerative_3_eucl_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "euclidean"),
-		  #'agglomerative_2_cityblock_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "cityblock"),
-		  #'agglomerative_3_cityblock_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "cityblock")
+                    'k_means_2': KMeans(n_clusters = 2),
+                    'k_means_3': KMeans(n_clusters = 3),
+                    'k_means_4': KMeans(n_clusters = 4),
+                    'agglomerative_2_eucl_avg' : AgglomerativeClustering(n_clusters = 2, linkage = "average", affinity = "euclidean"),
+                    'agglomerative_3_eucl_avg' : AgglomerativeClustering(n_clusters = 3, linkage = "average", affinity = "euclidean"),
+                    'agglomerative_10_eucl_avg' : AgglomerativeClustering(n_clusters = 10, linkage = "average", affinity = "euclidean"),
+                    'agglomerative_2_eucl_ward' : AgglomerativeClustering(n_clusters = 2, linkage = "ward", affinity = "euclidean"),
+                    'agglomerative_3_eucl_ward' : AgglomerativeClustering(n_clusters = 3, linkage = "ward", affinity = "euclidean"),
+                    'agglomerative_10_eucl_ward' : AgglomerativeClustering(n_clusters = 10, linkage = "ward", affinity = "euclidean")
+                    #'agglomerative_2_cityblock_avg' : AgglomerativeClustering(n_clusters = 2, linkage="average", affinity = "cityblock"),
+                    #'agglomerative_3_cityblock_avg' : AgglomerativeClustering(n_clusters = 3, linkage="average", affinity = "cityblock")		  
                   }
     
     # options!    
      
     
     ##2. scaled data. ALWAYS use scaled data! as intensities depend on pads, ... vary among patients    
-    datasToUse = [data_scaled, data_PCA2_scaled]
-    testNames = ['_dataScaled_%d_featureVect' %(numOfLayersToUse), '_dataPCA2Scaled_%d_featureVect' %(numOfLayersToUse)]
-      
+    datasToUse = [data_scaled, data_PCA2_scaled, data_noCoord_scaled]
+    testNames = ['_dataScaled_%d_featureVect' %(numOfLayersToUse), '_dataPCA2Scaled_%d_featureVect' %(numOfLayersToUse), '_dataNoCoordScaled_%d_featureVect' %(numOfLayersToUse)]      
     
     
 
