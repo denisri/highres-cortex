@@ -66,7 +66,7 @@ def extractProfiles(volCoord, volValue, volMask = None):
     arrCoord = np.asarray(volCoord)
     arrValue = np.asarray(volValue)
     
-    arrXcoords = # get all x coordinates of the volume
+    # arrXcoords = # get all x coordinates of the volume
     # same for y, z 
     # apply the same mask and conditions: get a list of  x.. coordinates corresponding to the values
 
